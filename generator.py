@@ -3,8 +3,7 @@
 import torch
 import torch.nn as nn
 
-from resblock import ForwardBlockGenerator, BackwardBlockGenerator
-from convolution_lstm import ConvLSTMCell
+from basicblock import ForwardBlockGenerator, BackwardBlockGenerator, ConvLSTMCell
 
 class Generator(nn.Module):
     def __init__(self):
@@ -63,6 +62,7 @@ class Generator(nn.Module):
             # save result
             outputs_f.append(x)
 
+
         # backward prediction
         internal_state = []
         outputs_b = []
@@ -97,4 +97,5 @@ class Generator(nn.Module):
             w = (step+1) / (total_step+1)
             lerp = w * x_f + (1-w) * x_b
             outputs.append(0.5 * lerp + 0.5 * (outputs_f[step] + outputs_b[total_step-1-step]))
+
         return outputs
