@@ -37,11 +37,11 @@ def parse_args():
     parser.add_argument("--sn", action="store_true", default=False,
                         help="enable spectral normalization")
 
-    parser.add_argument("--gan_loss_weight" , type=float, default=1e-3,
+    parser.add_argument("--gan-loss-weight" , type=float, default=1e-3,
                         help="weight of the adversarial loss")
-    parser.add_argument("--volume_loss_weight", type=float, default=1,
+    parser.add_argument("--volume-loss-weight", type=float, default=1,
                         help="weight of the volume loss (mse)")
-    parser.add_argument("--feature_loss_weight", type=float, default=5e-2,
+    parser.add_argument("--feature-loss-weight", type=float, default=5e-2,
                         help="weight of the feature loss")
 
     parser.add_argument("--lr", type=float, default=1e-4,
@@ -54,7 +54,13 @@ def parse_args():
                         help="beta2 of Adam (default: 0.999)")
     parser.add_argument("--batch_size", type=int, default=1,
                         help="batch size for training (default: 1)")
-    parser.add_argument("--start_epoch", type=int, default=0,
+    parser.add_argument("--training-step", type=int, default=3,
+                        help="in the training phase, the number of intermediate volumes")
+    parser.add_argument("--n-d", type=int, default=1,
+                        help="number of D updates per iteration")
+    parser.add_argument("--n-g", type=int, default=1,
+                        help="number of G upadates per iteration")
+    parser.add_argument("--start-epoch", type=int, default=0,
                         help="start epoch number (default: 0)")
     parser.add_argument("--epochs", type=int, default=10,
                         help="number of epochs to train (default: 10)")
@@ -123,7 +129,8 @@ def main(args):
         d_model = nn.DataParallel(d_model)
     d_model.to(device)
 
-    mse_criterion = nn.MSELoss()
+    mse_loss = nn.MSELoss()
+    adversarial_loss = nn.MSELoss()
     train_losses, test_losses = [], []
     d_losses, g_losses = [], []
 
@@ -132,6 +139,8 @@ def main(args):
                              betas=(args.beta1, args.beta2))
     d_optimizer = optim.Adam(d_model.parameter(), lr=args.lr,
                              betas=(args.beta1, args.beta2))
+
+    Tensor = torch.cuda.floatTensor if args.cuda else torch.FloatTensor
 
     # load checkpoint
     if args.resume:
@@ -156,4 +165,89 @@ def main(args):
         g_model.train()
         d_model.train()
         train_loss = 0.
-        
+        for i, sample in enumerate(train_loader):
+            # adversarial ground truths
+            real_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1).fill_(1.0), requires_grad=False)
+            fake_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1).fill_(0.0), requires_grad=False)
+
+            v_f = sample["v_f"].to(device)
+            v_b = sample["v_b"].to(device)
+            v_i = sample["v_i"].to(device)
+            g_optimizer.zero_grad()
+            fake_volumes = g_model(v_f, v_b, args.training_step)
+
+            # adversarial loss
+            # update discriminator
+            avg_d_loss = 0.
+            for k in range(args.n_d):
+                d_optimizer.zero_grad()
+                decisions = d_model(v_i)
+                d_loss_real = adversarial_loss(decisions, real_label)
+                fake_decisions = d_model(fake_volumes.detach())
+
+                d_loss_fake = adversarial_loss(fake_decisions, fake_label)
+                d_loss = d_loss_real + d_loss_fake
+                d_loss.backward()
+                avg_d_loss += d_loss.item() / args.n_d
+
+                d_optimizer.step()
+
+            # update generator
+            avg_g_loss = 0.
+            avg_loss = 0.
+            for k in range(args.n_g):
+                loss = 0.
+                g_optimizer.zero_grad()
+
+                # adversarial loss
+                fake_decisions = d_model(fake_volumes)
+                g_loss = args.gan_loss_weight * adversarial_loss(fake_decisions, real_label)
+                loss += g_loss
+                avg_g_loss = g_loss / args.n_g
+
+                # volume loss
+                volume_loss = args.volume_loss_weight * mse_loss(v_i, fake_volumes)
+                loss += volume_loss
+
+                # feature loss
+                feat_real = d_model.extract_features(v_i)
+                feat_fake = d_model.extract_features(fake_volumes)
+                for m in range(len(feat_real)):
+                    loss += args.feature_loss_weight * mse_loss(feat_real[m], feat_fake[m])
+                avg_loss += loss / args.n_g
+
+                loss.backward()
+                g_optimizer.step()
+
+            train_loss += avg_loss
+
+            # log training status
+            if i % args.log_every == 0:
+                print("Train Epoch: {} [ {}/{} ({:.0f}%)\tLoss: {:.6f}".format(
+                    epoch, i, len(train_loader.dataset), 100. * i / len(train_loader),
+                    avg_loss
+                ))
+                print("DLoss: {:.6f}, GLoss: {:.6f}".format(
+                    avg_d_loss, avg_g_loss
+                ))
+                d_losses.append(avg_d_loss)
+                g_losses.append(avg_g_loss)
+                train_losses.append(avg_loss)
+
+    print("====> Epoch: {} Average loss: {:.4f}".format(
+        epoch, train_loss / len(train_loader.dataset)
+    ))
+
+    # testing...
+    g_model.eval()
+    d_model.eval()
+    test_loss = 0.
+    with torch.no_grad():
+        for i, sample in enumerate(test_loader)
+
+
+
+
+
+
+
