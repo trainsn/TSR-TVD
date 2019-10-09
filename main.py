@@ -234,16 +234,51 @@ def main(args):
                 g_losses.append(avg_g_loss)
                 train_losses.append(avg_loss)
 
-    print("====> Epoch: {} Average loss: {:.4f}".format(
-        epoch, train_loss / len(train_loader.dataset)
-    ))
+        print("====> Epoch: {} Average loss: {:.4f}".format(
+            epoch, train_loss / len(train_loader.dataset)
+        ))
 
-    # testing...
-    g_model.eval()
-    d_model.eval()
-    test_loss = 0.
-    with torch.no_grad():
-        for i, sample in enumerate(test_loader)
+        # testing...
+        g_model.eval()
+        d_model.eval()
+        test_loss = 0.
+        with torch.no_grad():
+            for i, sample in enumerate(test_loader):
+                v_f = sample["v_f"].to(device)
+                v_b = sample["v_b"].to(device)
+                v_i = sample["v_i"].to(device)
+                fake_volumes = g_model(v_f, v_b, args.training_step)
+                test_loss += mse_loss(v_i, fake_volumes).item()
+
+        test_losses.append(test_loss / len(test_loader.dataset))
+        print("====> Epoch: {} Test set loss {:4f}".format(
+            epoch, test_losses[-1]
+        ))
+
+        # saving...
+        if epoch % args.check_every == 0:
+            print("=> saving checkpoint at epoch {}".format(epoch))
+            torch.save({"epoch": epoch + 1,
+                        "g_model_state_dict": g_model.state_dict(),
+                        "g_optimizer_state_dict":  g_optimizer.state_dict(),
+                        "d_model_state_dict": d_model.state_dict(),
+                        "d_optimizer_state_dict": d_optimizer.state_dict(),
+                        "d_losses": d_losses,
+                        "g_losses": g_losses,
+                        "train_losses": train_losses,
+                        "test_losses": test_losses},
+                       os.path.join(args.root, "model_" + str(epoch) +  "_" + "pth.tar")
+            )
+            torch.save(g_model.state_dict(),
+                       os.path.join(args.root, "model_" + str(epoch) + ".pth"))
+
+if __name__  == "__main__":
+    main(parse_args())
+
+
+
+
+
 
 
 

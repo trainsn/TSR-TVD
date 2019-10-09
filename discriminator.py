@@ -16,7 +16,7 @@ class Discriminator(nn.Module):
         self.conv4 = ConvLayer(in_channels=256, out_channels=512, kernel_size=4, stride=2)
         self.conv5 = nn.Conv3d(in_channels=512, out_channels=1, kernel_size=4, stride=1, padding=0)
 
-        self.leakyRuLU =  nn.LeakyReLU(0.2)
+        self.leakyRuLU = nn.LeakyReLU(0.2)
         self.tanh = nn.Tanh()
 
     def forward(self, x):
