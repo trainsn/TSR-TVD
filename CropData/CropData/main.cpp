@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <sstream> 
 #include <string>
 #include <stdlib.h>
+#include <time.h>
 using namespace std;
 
 int main() {
@@ -11,9 +13,9 @@ int main() {
 	const int yiVSize = 720;
 	const int ziVSize = 120;
 
-	const int xSubSize = 480;
-	const int ySubSize = 720;
-	const int zSubSize = 60;
+	const int xSubSize = 64;
+	const int ySubSize = 64;
+	const int zSubSize = 64;
 
 	FILE *fp = fopen(filename, "rb");
 	if (fp == NULL) {
@@ -26,11 +28,12 @@ int main() {
 	float *subData;
 	subData = new float[xSubSize * ySubSize * zSubSize];
 
+	srand(time(0));
 	int x_start = rand() % (xiVSize - xSubSize + 1);
 	int y_start = rand() % (yiVSize - ySubSize + 1);
 	int z_start = rand() % (ziVSize - zSubSize + 1);
 
-	float maxV = 0, minV = 2.0;
+	float maxV = -1.0, minV = 2.0;
 	int subIdx = 0;
 	int maxz = -1, maxy = -1, maxx = -1, minz = -1, miny = -1, minx = -1;
 	for (int i = 0; i < ziVSize; i++) {
@@ -50,7 +53,6 @@ int main() {
 						minz = i - z_start; miny = j - y_start; minx = k - x_start;
 					}
 				}			
-				//// printf("%f ", data[idx]);
 			}
 		}
 	}
@@ -58,8 +60,14 @@ int main() {
 	printf("%d %d %d %f\n", minx, miny, minz, minV);
 	printf("%d %d %d %f\n", maxx, maxy, maxz, maxV);
 
-	char outFilename[256] = "subData.raw";
-	fp = fopen(outFilename, "wb");
+	// save in file 
+	string filePath(filename);
+	filePath = filePath.substr(0, filePath.rfind("."));
+	ostringstream os; 
+	os << filePath << "_x" <<  x_start << "_y" << y_start << "_z" << z_start << ".raw";
+	string outFilename(os.str());
+
+	fp = fopen(outFilename.c_str(), "wb");
 	if (fp == NULL) {
 		printf("can't open file %s\n", outFilename);
 	}
