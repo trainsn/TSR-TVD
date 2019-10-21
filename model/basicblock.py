@@ -101,8 +101,8 @@ class ConvLSTMCell(nn.Module):
         return h, c
 
     def init_hidden(self, batch_size, hidden_channels, shape):
-        return (Variable(torch.zeros(batch_size, hidden_channels, shape[0], shape[1])).cuda(),
-                Variable(torch.zeros(batch_size, hidden_channels, shape[0], shape[1])).cuda())
+        return (Variable(torch.zeros(batch_size, hidden_channels, shape[0], shape[1], shape[2])).cuda(),
+                Variable(torch.zeros(batch_size, hidden_channels, shape[0], shape[1], shape[2])).cuda())
 
 
 

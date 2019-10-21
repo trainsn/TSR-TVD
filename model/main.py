@@ -3,6 +3,7 @@
 import os
 import argparse
 import math
+import pdb
 
 import numpy as np
 from tqdm import tqdm
@@ -15,9 +16,11 @@ import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.data import Dataset, DataLoader
 from torchvision.utils import save_image
+from torchvision import transforms
 
 from generator import Generator
 from discriminator import Discriminator
+from dataset import *
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Deep Learning Model")
@@ -41,7 +44,7 @@ def parse_args():
                         help="gan loss (default: none)")
     parser.add_argument("--volume-loss", action="store_true", default=False,
                         help ="enable volume loss")
-    parser.add_argument("feature-loss", action="store_true", default=False,
+    parser.add_argument("--feature-loss", action="store_true", default=False,
                         help="enable feature loss")
     parser.add_argument("--gan-loss-weight" , type=float, default=1e-3,
                         help="weight of the adversarial loss")
@@ -94,8 +97,22 @@ def main(args):
     torch.manual_seed(args.seed)
 
     # data loader
-    train_dataset = None
-    test_dataset = None
+    transform = transforms.Compose([
+        Normalize(),
+        ToTensor()
+    ])
+    train_dataset = TVDataset(
+        root=args.root,
+        block_size=args.block_size,
+        train=True,
+        transform=transform
+    )
+    test_dataset = TVDataset(
+        root=args.root,
+        block_size=args.block_size,
+        train=False,
+        transform=transform
+    )
 
     kwargs = {"num_workers": 4, "pin_memory": True} if args.cuda else {}
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size,
@@ -145,13 +162,13 @@ def main(args):
     d_losses, g_losses = [], []
 
     # optimizer
-    g_optimizer = optim.Adam(g_model.parameter(), lr=args.lr,
+    g_optimizer = optim.Adam(g_model.parameters(), lr=args.lr,
                              betas=(args.beta1, args.beta2))
     if args.gan_loss != "none":
-        d_optimizer = optim.Adam(d_model.parameter(), lr=args.d_lr,
+        d_optimizer = optim.Adam(d_model.parameters(), lr=args.d_lr,
                                  betas=(args.beta1, args.beta2))
 
-    Tensor = torch.cuda.floatTensor if args.cuda else torch.FloatTensor
+    Tensor = torch.cuda.FloatTensor if args.cuda else torch.FloatTensor
 
     # load checkpoint
     if args.resume:
@@ -219,7 +236,6 @@ def main(args):
                     fake_decisions = d_model(fake_volumes)
                     g_loss = args.gan_loss_weight * adversarial_loss(fake_decisions, real_label)
                     loss += g_loss
-                    avg_g_loss = g_loss / args.n_g
 
                 # volume loss
                 if args.volume_loss:
@@ -232,8 +248,8 @@ def main(args):
                     feat_fake = d_model.extract_features(fake_volumes)
                     for m in range(len(feat_real)):
                         loss += args.feature_loss_weight * mse_loss(feat_real[m], feat_fake[m])
-                    avg_loss += loss / args.n_g
 
+                avg_loss += loss / args.n_g
                 loss.backward()
                 g_optimizer.step()
 
@@ -241,7 +257,7 @@ def main(args):
 
             # log training status
             if i % args.log_every == 0:
-                print("Train Epoch: {} [ {}/{} ({:.0f}%)\tLoss: {:.6f}".format(
+                print("Train Epoch: {} [ {}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
                     epoch, i, len(train_loader.dataset), 100. * i / len(train_loader),
                     avg_loss
                 ))
@@ -258,22 +274,22 @@ def main(args):
         ))
 
         # testing...
-        g_model.eval()
-        if args.gan_loss != "none":
-            d_model.eval()
-        test_loss = 0.
-        with torch.no_grad():
-            for i, sample in enumerate(test_loader):
-                v_f = sample["v_f"].to(device)
-                v_b = sample["v_b"].to(device)
-                v_i = sample["v_i"].to(device)
-                fake_volumes = g_model(v_f, v_b, args.training_step)
-                test_loss += mse_loss(v_i, fake_volumes).item()
-
-        test_losses.append(test_loss / len(test_loader.dataset))
-        print("====> Epoch: {} Test set loss {:4f}".format(
-            epoch, test_losses[-1]
-        ))
+        # g_model.eval()
+        # if args.gan_loss != "none":
+        #     d_model.eval()
+        # test_loss = 0.
+        # with torch.no_grad():
+        #     for i, sample in enumerate(test_loader):
+        #         v_f = sample["v_f"].to(device)
+        #         v_b = sample["v_b"].to(device)
+        #         v_i = sample["v_i"].to(device)
+        #         fake_volumes = g_model(v_f, v_b, args.training_step)
+        #         test_loss += mse_loss(v_i, fake_volumes).item()
+        #
+        # test_losses.append(test_loss / len(test_loader.dataset))
+        # print("====> Epoch: {} Test set loss {:4f}".format(
+        #     epoch, test_losses[-1]
+        # ))
 
         # saving...
         if epoch % args.check_every == 0:

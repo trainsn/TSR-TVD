@@ -12,14 +12,14 @@ int main() {
 	const int yiVSize = 720;
 	const int ziVSize = 120;
 
-	const int xSubSize = 64;
-	const int ySubSize = 64;
-	const int zSubSize = 64;
+	const int xSubSize = 480;
+	const int ySubSize = 720;
+	const int zSubSize = 120;
 	FILE *fp;
 	FILE *fp_list;
 
 	// load raw data
-	char root[256] = "D:\\OSU\\Grade1\\Research\\exavisData\\combustion\\Jet_0016-0020\\";
+	char root[256] = "D:\\OSU\\Grade1\\Research\\TSR-TVD\\exavisData\\combustion\\Jet_0016-0020\\";
 	ostringstream os;
 	const int timestep = 5;
 	const int time_start = 16;
@@ -39,7 +39,7 @@ int main() {
 	}
 
 	// crop data
-	const int dataSize = 500;
+	const int dataSize = 1;
 	const int max_step = 3;
 	os.str("");
 	os << root << "cropped\\" << "volume_list.txt";
@@ -89,18 +89,18 @@ int main() {
 			printf("%d %d %d %d %d %d %d %d %f\n", d, time_start + t, x_start, y_start, z_start, maxx, maxy, maxz, maxV);
 
 			// save in file 
-			os.str("");
-			os << root << "cropped\\" << "jet_mixfrac_00" << (time_start + t) << "_x" << x_start << "_y" << y_start << "_z" << z_start << ".raw";
-			string outFilename(os.str());
-			fprintf(fp_list, "%s\n", outFilename.substr(outFilename.rfind("\\") + 1).c_str());
+			//os.str("");
+			//os << root << "cropped\\" << "jet_mixfrac_00" << (time_start + t) << "_x" << x_start << "_y" << y_start << "_z" << z_start << ".raw";
+			//string outFilename(os.str());
+			//fprintf(fp_list, "%s\n", outFilename.substr(outFilename.rfind("\\") + 1).c_str());
 
-			fp = fopen(outFilename.c_str(), "wb");
-			if (fp == NULL) {
-				printf("can't open file %s\n", outFilename);
-			}
-			fwrite(subData, sizeof(float), xSubSize * ySubSize * zSubSize, fp);
-			delete[]subData;
-			fclose(fp);
+			//fp = fopen(outFilename.c_str(), "wb");
+			//if (fp == NULL) {
+			//	printf("can't open file %s\n", outFilename);
+			//}
+			//fwrite(subData, sizeof(float), xSubSize * ySubSize * zSubSize, fp);
+			//delete[]subData;
+			//fclose(fp);
 		}
 	}
 	system("pause");

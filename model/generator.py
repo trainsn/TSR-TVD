@@ -5,9 +5,11 @@ import torch.nn as nn
 
 from basicblock import ForwardBlockGenerator, BackwardBlockGenerator, ConvLSTMCell
 
+import pdb
+
 class Generator(nn.Module):
     def __init__(self):
-        super(Generator, self).__init__(self)
+        super(Generator, self).__init__()
 
         self.feature_learning_subnet = nn.Sequential(
             ForwardBlockGenerator(in_channels=1, out_channels=16, kernel_size=5, stride=1, downsample_factor=2),
@@ -47,9 +49,9 @@ class Generator(nn.Module):
                 # all cells are initialized in the first step
                 name = 'cell{}'.format(i)
                 if step == 0:
-                    bsize, _, height, width = x.size()
-                    (h, c) = getattr(self, name).init_hidden(batch_size=bsize, hidden_channels=self.hidden_channels[i],
-                                                             shape=(height, width))
+                    bsize, _, height, length, width = x.size()
+                    (h, c) = getattr(self, name).init_hidden(batch_size=bsize, hidden_channels=64,
+                                                             shape=(height, length, width))
                     internal_state.append((h, c))
                 # do forward
                 (h, c) = internal_state[i]
@@ -76,9 +78,9 @@ class Generator(nn.Module):
                 # all cells are initialized in the first step
                 name = 'cell{}'.format(i)
                 if step == 0:
-                    bsize, _, height, width = x.size()
-                    (h, c) = getattr(self, name).init_hidden(batch_size=bsize, hidden_channels=self.hidden_channels[i],
-                                                             shape=(height, width))
+                    bsize, _, height, length, width = x.size()
+                    (h, c) = getattr(self, name).init_hidden(batch_size=bsize, hidden_channels=64,
+                                                             shape=(height, length, width))
                     internal_state.append((h, c))
                 # do backward
                 (h, c) = internal_state[i]
@@ -95,8 +97,8 @@ class Generator(nn.Module):
         outputs = []
         for step in range(total_step):
             w = (step+1) / (total_step+1)
-            lerp = w * x_f + (1-w) * x_b
+            lerp = (1-w) * x_f + w * x_b
             outputs.append(0.5 * lerp + 0.5 * (outputs_f[step] + outputs_b[total_step-1-step]))
-        outputs = torch.tensor(outputs)
+        outputs = torch.cat(outputs, 0)
 
         return outputs
