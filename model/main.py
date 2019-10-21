@@ -61,7 +61,7 @@ def parse_args():
                         help="beta1 of Adam (default: 0.0)")
     parser.add_argument("--beta2", type=float, default=0.999,
                         help="beta2 of Adam (default: 0.999)")
-    parser.add_argument("--batch_size", type=int, default=1,
+    parser.add_argument("--batch_size", type=int, default=4,
                         help="batch size for training (default: 1)")
     parser.add_argument("--training-step", type=int, default=3,
                         help="in the training phase, the number of intermediate volumes")
@@ -204,6 +204,7 @@ def main(args):
             v_b = sample["v_b"].to(device)
             v_i = sample["v_i"].to(device)
             g_optimizer.zero_grad()
+            pdb.set_trace()
             fake_volumes = g_model(v_f, v_b, args.training_step)
 
             # adversarial loss
@@ -239,6 +240,7 @@ def main(args):
 
                 # volume loss
                 if args.volume_loss:
+                    pdb.set_trace()
                     volume_loss = args.volume_loss_weight * mse_loss(v_i, fake_volumes)
                     loss += volume_loss
 
@@ -319,15 +321,3 @@ def main(args):
 
 if __name__  == "__main__":
     main(parse_args())
-
-
-
-
-
-
-
-
-
-
-
-

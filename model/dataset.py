@@ -24,12 +24,14 @@ class TVDataset(Dataset):
         volume_list = 'volume_list.txt'
         f = open(os.path.join(root, volume_list))
         line = int(f.readline())
-        self.dataset_size = int(line)
+        # self.dataset_size = int(line)
+        self.dataset_size = 4
         self.v_fs = []
         self.v_bs = []
         self.v_is = []
-        line = f.readline()
-        while line:
+
+        for t in range(self.dataset_size):
+            line = f.readline()
             step = int(line)
             v_i = []
             for i in range(step):
@@ -43,7 +45,6 @@ class TVDataset(Dataset):
                 else:
                     v_i.append(line)
             self.v_is.append(v_i)
-            line = f.readline()
 
         self.root = root
         self.train = train
@@ -75,6 +76,7 @@ class TVDataset(Dataset):
 
         v_is = torch.cat(vi_list, 0)
         sample = {"v_f": v_f, "v_b": v_b, "v_i": v_is}
+        print(sample["v_i"])
 
         return sample
 

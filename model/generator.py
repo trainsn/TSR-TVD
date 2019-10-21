@@ -99,6 +99,8 @@ class Generator(nn.Module):
             w = (step+1) / (total_step+1)
             lerp = (1-w) * x_f + w * x_b
             outputs.append(0.5 * lerp + 0.5 * (outputs_f[step] + outputs_b[total_step-1-step]))
-        outputs = torch.cat(outputs, 0)
+            outputs[step] = outputs[step].unsqueeze(1)
+        pdb.set_trace()
+        outputs = torch.cat(outputs, 1)
 
         return outputs
