@@ -61,7 +61,7 @@ def parse_args():
                         help="beta1 of Adam (default: 0.0)")
     parser.add_argument("--beta2", type=float, default=0.999,
                         help="beta2 of Adam (default: 0.999)")
-    parser.add_argument("--batch_size", type=int, default=4,
+    parser.add_argument("--batch_size", type=int, default=1,
                         help="batch size for training (default: 1)")
     parser.add_argument("--training-step", type=int, default=3,
                         help="in the training phase, the number of intermediate volumes")
@@ -77,7 +77,7 @@ def parse_args():
     parser.add_argument("--log-every", type=int, default=10,
                         help="log training status every given number of batches (default: 10)")
     parser.add_argument("--check-every", type=int, default=20,
-                        help="save checkpoint every given number of epochss (default: 20)")
+                        help="save checkpoint every given number of epoches (default: 20)")
 
     parser.add_argument("--block-size", type=int, default=64,
                         help="the size of the sub-block")
@@ -204,7 +204,6 @@ def main(args):
             v_b = sample["v_b"].to(device)
             v_i = sample["v_i"].to(device)
             g_optimizer.zero_grad()
-            pdb.set_trace()
             fake_volumes = g_model(v_f, v_b, args.training_step)
 
             # adversarial loss
@@ -240,7 +239,6 @@ def main(args):
 
                 # volume loss
                 if args.volume_loss:
-                    pdb.set_trace()
                     volume_loss = args.volume_loss_weight * mse_loss(v_i, fake_volumes)
                     loss += volume_loss
 
@@ -259,7 +257,7 @@ def main(args):
 
             # log training status
             if i % args.log_every == 0:
-                print("Train Epoch: {} [ {}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                print("Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
                     epoch, i, len(train_loader.dataset), 100. * i / len(train_loader),
                     avg_loss
                 ))
@@ -296,7 +294,7 @@ def main(args):
         # saving...
         if epoch % args.check_every == 0:
             print("=> saving checkpoint at epoch {}".format(epoch))
-            if args.gan_losses != "none":
+            if args.gan_loss != "none":
                 torch.save({"epoch": epoch + 1,
                             "g_model_state_dict": g_model.state_dict(),
                             "g_optimizer_state_dict":  g_optimizer.state_dict(),

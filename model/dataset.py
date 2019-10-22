@@ -76,7 +76,6 @@ class TVDataset(Dataset):
 
         v_is = torch.cat(vi_list, 0)
         sample = {"v_f": v_f, "v_b": v_b, "v_i": v_is}
-        print(sample["v_i"])
 
         return sample
 
