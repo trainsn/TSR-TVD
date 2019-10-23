@@ -61,8 +61,8 @@ def parse_args():
                         help="beta1 of Adam (default: 0.0)")
     parser.add_argument("--beta2", type=float, default=0.999,
                         help="beta2 of Adam (default: 0.999)")
-    parser.add_argument("--batch_size", type=int, default=1,
-                        help="batch size for training (default: 1)")
+    parser.add_argument("--batch_size", type=int, default=4,
+                        help="batch size for training (default: 4)")
     parser.add_argument("--training-step", type=int, default=3,
                         help="in the training phase, the number of intermediate volumes")
     parser.add_argument("--n-d", type=int, default=2,
@@ -71,7 +71,7 @@ def parse_args():
                         help="number of G upadates per iteration")
     parser.add_argument("--start-epoch", type=int, default=0,
                         help="start epoch number (default: 0)")
-    parser.add_argument("--epochs", type=int, default=10,
+    parser.add_argument("--epochs", type=int, default=100,
                         help="number of epochs to train (default: 10)")
 
     parser.add_argument("--log-every", type=int, default=10,
@@ -258,7 +258,7 @@ def main(args):
             # log training status
             if i % args.log_every == 0:
                 print("Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
-                    epoch, i, len(train_loader.dataset), 100. * i / len(train_loader),
+                    epoch, i * args.batch_size, len(train_loader.dataset), 100. * i / len(train_loader),
                     avg_loss
                 ))
                 if args.gan_loss != "none":
@@ -270,7 +270,7 @@ def main(args):
                 train_losses.append(avg_loss)
 
         print("====> Epoch: {} Average loss: {:.4f}".format(
-            epoch, train_loss / len(train_loader.dataset)
+            epoch, train_loss * args.batch_size / len(train_loader.dataset)
         ))
 
         # testing...

@@ -25,7 +25,7 @@ class TVDataset(Dataset):
         f = open(os.path.join(root, volume_list))
         line = int(f.readline())
         # self.dataset_size = int(line)
-        self.dataset_size = 4
+        self.dataset_size = 500
         self.v_fs = []
         self.v_bs = []
         self.v_is = []

@@ -50,7 +50,8 @@ class ForwardBlockGenerator(nn.Module):
 
         residual = self.p2_conv0(x)
 
-        out = out + residual
+        # out = out + residual
+        out = residual
         return out
 
 class BackwardBlockGenerator(nn.Module):
