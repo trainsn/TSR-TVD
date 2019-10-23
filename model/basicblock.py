@@ -8,7 +8,7 @@ from torch.autograd import Variable
 class ConvLayer(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride):
         super(ConvLayer, self).__init__()
-        padding = kernel_size // 2
+        padding = (kernel_size-1) // 2
         self.conv3d = nn.Conv3d(in_channels, out_channels, kernel_size, stride, padding)
 
     def forward(self, x):
@@ -19,7 +19,7 @@ class UpsampleConvLayer(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, upsample=None):
         super(UpsampleConvLayer, self).__init__()
         self.upsample = upsample
-        padding = kernel_size // 2
+        padding = (kernel_size-1) // 2
         self.conv3d = nn.Conv3d(in_channels, out_channels, kernel_size, stride, padding)
 
     def forward(self, x):

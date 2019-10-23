@@ -197,8 +197,8 @@ def main(args):
         train_loss = 0.
         for i, sample in enumerate(train_loader):
             # adversarial ground truths
-            real_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1).fill_(1.0), requires_grad=False)
-            fake_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1).fill_(0.0), requires_grad=False)
+            real_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1, 1, 1, 1).fill_(1.0), requires_grad=False)
+            fake_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1, 1, 1, 1).fill_(0.0), requires_grad=False)
 
             v_f = sample["v_f"].to(device)
             v_b = sample["v_b"].to(device)
@@ -210,6 +210,8 @@ def main(args):
             # update discriminator
             if args.gan_loss != "none":
                 avg_d_loss = 0.
+                avg_d_loss_real = 0.
+                avg_d_loss_fake = 0.
                 for k in range(args.n_d):
                     d_optimizer.zero_grad()
                     decisions = d_model(v_i)
@@ -220,6 +222,8 @@ def main(args):
                     d_loss = d_loss_real + d_loss_fake
                     d_loss.backward()
                     avg_d_loss += d_loss.item() / args.n_d
+                    avg_d_loss_real += d_loss_real / args.n_d
+                    avg_d_loss_fake += d_loss_fake / args.n_d
 
                     d_optimizer.step()
 
@@ -233,9 +237,11 @@ def main(args):
 
                 # adversarial loss
                 if args.gan_loss != "none":
+                    # pdb.set_trace()
                     fake_decisions = d_model(fake_volumes)
                     g_loss = args.gan_loss_weight * adversarial_loss(fake_decisions, real_label)
                     loss += g_loss
+                    avg_g_loss += g_loss.item() / args.n_g
 
                 # volume loss
                 if args.volume_loss:
@@ -247,7 +253,7 @@ def main(args):
                     feat_real = d_model.extract_features(v_i)
                     feat_fake = d_model.extract_features(fake_volumes)
                     for m in range(len(feat_real)):
-                        loss += args.feature_loss_weight * mse_loss(feat_real[m], feat_fake[m])
+                        loss += args.feature_loss_weight / len(feat_real) * mse_loss(feat_real[m], feat_fake[m])
 
                 avg_loss += loss / args.n_g
                 loss.backward()
@@ -262,8 +268,8 @@ def main(args):
                     avg_loss
                 ))
                 if args.gan_loss != "none":
-                    print("DLoss: {:.6f}, GLoss: {:.6f}".format(
-                        avg_d_loss, avg_g_loss
+                    print("DLossReal: {:.6f} DLossFake: {:.6f} DLoss: {:.6f}, GLoss: {:.6f}".format(
+                        avg_d_loss_real, avg_d_loss_fake, avg_d_loss, avg_g_loss
                     ))
                     d_losses.append(avg_d_loss)
                     g_losses.append(avg_g_loss)
