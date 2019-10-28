@@ -461,3 +461,4 @@ MigrationBackup/
 .ionide/
 
 exavisData
+*.txt

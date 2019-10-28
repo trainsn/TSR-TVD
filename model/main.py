@@ -20,6 +20,8 @@ from torchvision import transforms
 
 from generator import Generator
 from discriminator import Discriminator
+import sys
+sys.path.append("../datasets")
 from dataset import *
 
 def parse_args():
@@ -76,8 +78,10 @@ def parse_args():
 
     parser.add_argument("--log-every", type=int, default=10,
                         help="log training status every given number of batches (default: 10)")
+    parser.add_argument("--test-every", type=int, default=5,
+                        help="test every given number of epochs (default: 5")
     parser.add_argument("--check-every", type=int, default=20,
-                        help="save checkpoint every given number of epoches (default: 20)")
+                        help="save checkpoint every given number of epochs (default: 20)")
 
     parser.add_argument("--block-size", type=int, default=64,
                         help="the size of the sub-block")
@@ -103,13 +107,17 @@ def main(args):
     ])
     train_dataset = TVDataset(
         root=args.root,
-        block_size=args.block_size,
+        sub_size=args.block_size,
+        volume_list="volume_train_list.txt",
+        max_k=args.training_step,
         train=True,
         transform=transform
     )
     test_dataset = TVDataset(
         root=args.root,
-        block_size=args.block_size,
+        sub_size=args.block_size,
+        volume_list="volume_test_list.txt",
+        max_k=args.training_step,
         train=False,
         transform=transform
     )
@@ -237,7 +245,6 @@ def main(args):
 
                 # adversarial loss
                 if args.gan_loss != "none":
-                    # pdb.set_trace()
                     fake_decisions = d_model(fake_volumes)
                     g_loss = args.gan_loss_weight * adversarial_loss(fake_decisions, real_label)
                     loss += g_loss
@@ -280,22 +287,23 @@ def main(args):
         ))
 
         # testing...
-        # g_model.eval()
-        # if args.gan_loss != "none":
-        #     d_model.eval()
-        # test_loss = 0.
-        # with torch.no_grad():
-        #     for i, sample in enumerate(test_loader):
-        #         v_f = sample["v_f"].to(device)
-        #         v_b = sample["v_b"].to(device)
-        #         v_i = sample["v_i"].to(device)
-        #         fake_volumes = g_model(v_f, v_b, args.training_step)
-        #         test_loss += mse_loss(v_i, fake_volumes).item()
-        #
-        # test_losses.append(test_loss / len(test_loader.dataset))
-        # print("====> Epoch: {} Test set loss {:4f}".format(
-        #     epoch, test_losses[-1]
-        # ))
+        if epoch % args.test_every:
+            g_model.eval()
+            if args.gan_loss != "none":
+                d_model.eval()
+            test_loss = 0.
+            with torch.no_grad():
+                for i, sample in enumerate(test_loader):
+                    v_f = sample["v_f"].to(device)
+                    v_b = sample["v_b"].to(device)
+                    v_i = sample["v_i"].to(device)
+                    fake_volumes = g_model(v_f, v_b, args.training_step)
+                    test_loss += args.volume_loss_weight * mse_loss(v_i, fake_volumes).item()
+
+            test_losses.append(test_loss * args.batch_size / len(test_loader.dataset))
+            print("====> Epoch: {} Test set loss {:4f}".format(
+                epoch, test_losses[-1]
+            ))
 
         # saving...
         if epoch % args.check_every == 0:
