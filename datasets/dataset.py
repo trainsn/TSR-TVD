@@ -7,7 +7,7 @@ import pdb
 import torch
 from torch.utils.data import Dataset
 
-def volume_loader(path, zSize, ySize, xSize, sub_size):
+def volume_loader(path, zSize, ySize, xSize):
     f = open(path, 'rb')
     volume = np.zeros((zSize, ySize, xSize))
     for i in range(zSize):
@@ -16,21 +16,21 @@ def volume_loader(path, zSize, ySize, xSize, sub_size):
                 data = f.read(4)
                 elem = struct.unpack("f", data)[0]
                 volume[i][j][k] = elem
-
-    z_start = random.randint(0, zSize-sub_size)
-    y_start = random.randint(0, ySize-sub_size)
-    x_start = random.randint(0, xSize-sub_size)
-    sub_volume = volume[z_start:z_start+sub_size, y_start:y_start+sub_size, x_start:x_start+sub_size]
-    sub_volume = sub_volume.astype(np.float32)
     f.close()
-    return sub_volume
+    return volume
 
 class TVDataset(Dataset):
     def __init__(self, root, sub_size, max_k, volume_list="volume_train_list.txt", train=True, transform=None,
                  loader=volume_loader):
-        f = open(os.path.join(root, volume_list))
-        line = f.readline().split()
-        self.xSize, self.ySize, self.zSize = int(line[0]), int(line[1]), int(line[2])
+        if train:
+            f = open(os.path.join(root, "train_cropped", volume_list))
+        else
+            f = open(os.path.join(root, "test_cropped", volume_list))
+        line = f.readline()
+        self.dataSize = int(line)
+        line = f.readline()
+        self.timeRange = int(line)
+
         self.vs = []
         line = f.readline()
         while line:
@@ -39,11 +39,7 @@ class TVDataset(Dataset):
             self.vs.append(line)
             line = f.readline()
 
-        if train:
-            self.dataset_size = len(self.vs) - 1 - max_k
-        else:
-            self.dataset_size = int((len(self.vs)-1) / (max_k+1))
-
+        self.dataSize = self.dataSize * self.timeRange
         self.root = root
         self.sub_size = sub_size
         self.max_k = max_k
@@ -55,42 +51,23 @@ class TVDataset(Dataset):
         return self.dataset_size
 
     def __getitem__(self, index):
-        if self.train:
-            vf_path = os.path.join(self.root, self.vs[index])
-            v_f = self.loader(vf_path, self.zSize, self.ySize, self.xSize, self.sub_size)
+        vf_path = os.path.join(self.root, self.vs[index*(self.max_k+2)])
+        v_f = self.loader(vf_path, self.sub_size, self.sub_size, self.sub_size)
 
-            vb_path = os.path.join(self.root, self.vs[index+self.max_k+1])
-            v_b = self.loader(vb_path, self.zSize, self.ySize, self.xSize, self.sub_size)
+        vb_path = os.path.join(self.root, self.vs[index*(self.max_k+2) + self.max_k + 1])
+        v_b = self.loader(vb_path, self.sub_size, self.sub_size, self.sub_size)
+        if self.transform is not None:
+            v_f = self.transform(v_f)
+            v_b = self.transform(v_b)
+
+        vi_list = []
+        for idx in range(index*(self.max_k+2) + 1, index*(self.max_k+2) + self.max_k + 1):
+            vi_path = os.path.join(self.root, self.vs[idx])
+            v_i = self.loader(vi_path, self.sub_size, self.sub_size, self.sub_size)
             if self.transform is not None:
-                v_f = self.transform(v_f)
-                v_b = self.transform(v_b)
-
-            vi_list = []
-            for idx in range(index+1, index+1+self.max_k):
-                vi_path = os.path.join(self.root, self.vs[idx])
-                v_i = self.loader(vi_path, self.zSize, self.ySize, self.xSize, self.sub_size)
-                if self.transform is not None:
-                    v_i = self.transform(v_i)
-                v_i = torch.unsqueeze(v_i, 0)
-                vi_list.append(v_i)
-        else:
-            vf_path = os.path.join(self.root, self.vs[index*(self.max_k+1)])
-            v_f = self.loader(vf_path, self.zSize, self.ySize, self.xSize, self.sub_size)
-
-            vb_path = os.path.join(self.root, self.vs[(index+1)*(self.max_k+1)])
-            v_b = self.loader(vb_path, self.zSize, self.ySize, self.xSize, self.sub_size)
-            if self.transform is not None:
-                v_f = self.transform(v_f)
-                v_b = self.transform(v_b)
-
-            vi_list = []
-            for idx in range(index*(self.max_k+1)+1, (index+1)*(self.max_k+1)):
-                vi_path = os.path.join(self.root, self.vs[idx])
-                v_i = self.loader(vi_path, self.zSize, self.ySize, self.xSize, self.sub_size)
-                if self.transform is not None:
-                    v_i = self.transform(v_i)
-                v_i = torch.unsqueeze(v_i, 0)
-                vi_list.append(v_i)
+                v_i = self.transform(v_i)
+            v_i = torch.unsqueeze(v_i, 0)
+            vi_list.append(v_i)
 
         v_is = torch.cat(vi_list, 0)
         sample = {"v_f": v_f, "v_b": v_b, "v_i": v_is}
