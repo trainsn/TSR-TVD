@@ -21,7 +21,7 @@ const int train_end = 45;
 const int test_start = 50;
 const int test_end = 118;
 const int timestep = 5;
-const int dataSize = 100;
+const int dataSize = 3;
 
 int train_xstart[dataSize][train_end][timestep];
 int train_ystart[dataSize][train_end][timestep];
@@ -115,17 +115,17 @@ void CropData(int time_start, bool train) {
 				train_Vmax[d][time_start][t] = maxV;
 			}
 			else {
-				test_xstart[d][time_start][t] = x_start;
-				test_ystart[d][time_start][t] = y_start;
-				test_zstart[d][time_start][t] = z_start;
-				test_xmin[d][time_start][t] = minx;
-				test_ymin[d][time_start][t] = miny;
-				test_zmin[d][time_start][t] = minz;
-				test_Vmax[d][time_start][t] = minV;
-				test_xmax[d][time_start][t] = maxx;
-				test_ymax[d][time_start][t] = maxy;
-				test_zmax[d][time_start][t] = maxz;
-				test_Vmax[d][time_start][t] = maxV;
+				test_xstart[d][(time_start - test_start) / (timestep - 1)][t] = x_start;
+				test_ystart[d][(time_start - test_start) / (timestep - 1)][t] = y_start;
+				test_zstart[d][(time_start - test_start) / (timestep - 1)][t] = z_start;
+				test_xmin[d][(time_start - test_start) / (timestep - 1)][t] = minx;
+				test_ymin[d][(time_start - test_start) / (timestep - 1)][t] = miny;
+				test_zmin[d][(time_start - test_start) / (timestep - 1)][t] = minz;
+				test_Vmax[d][(time_start - test_start) / (timestep - 1)][t] = minV;
+				test_xmax[d][(time_start - test_start) / (timestep - 1)][t] = maxx;
+				test_ymax[d][(time_start - test_start) / (timestep - 1)][t] = maxy;
+				test_zmax[d][(time_start - test_start) / (timestep - 1)][t] = maxz;
+				test_Vmax[d][(time_start - test_start) / (timestep - 1)][t] = maxV;
 			}
 					
 			// save in file 
@@ -237,31 +237,28 @@ int main() {
 		for (int time_start = test_start; time_start <= test_end; time_start += timestep - 1)
 			for (int t = 0; t < timestep; t++) {
 				printf("%d %d %d %d %d %d %d %d %f\n", d, time_start + t,
-					test_xstart[d][time_start][t], test_ystart[d][time_start][t], test_zstart[d][time_start][t],
-					test_xmin[d][time_start][t], test_ymin[d][time_start][t], test_zmin[d][time_start][t],
-					test_Vmin[d][time_start][t]);
+					test_xstart[d][(time_start - test_start) / (timestep - 1)][t], test_ystart[d][(time_start - test_start) / (timestep - 1)][t], test_zstart[d][(time_start - test_start) / (timestep - 1)][t],
+					test_xmin[d][(time_start - test_start) / (timestep - 1)][t], test_ymin[d][(time_start - test_start) / (timestep - 1)][t], test_zmin[d][(time_start - test_start) / (timestep - 1)][t],
+					test_Vmin[d][(time_start - test_start) / (timestep - 1)][t]);
 				printf("%d %d %d %d %d %d %d %d %f\n", d, time_start + t,
-					test_xstart[d][time_start][t], test_ystart[d][time_start][t], test_zstart[d][time_start][t],
-					test_xmax[d][time_start][t], test_ymax[d][time_start][t], test_zmax[d][time_start][t],
-					test_Vmax[d][time_start][t]);
+					test_xstart[d][(time_start - test_start) / (timestep - 1)][t], test_ystart[d][(time_start - test_start) / (timestep - 1)][t], test_zstart[d][(time_start - test_start) / (timestep - 1)][t],
+					test_xmax[d][(time_start - test_start) / (timestep - 1)][t], test_ymax[d][(time_start - test_start) / (timestep - 1)][t], test_zmax[d][(time_start - test_start) / (timestep - 1)][t],
+					test_Vmax[d][(time_start - test_start) / (timestep - 1)][t]);
 
 				os.str("");
 				if (time_start + t < 10)
 					os << root << "test_cropped\\" << "jet_mixfrac_000" << (time_start + t)
-					<< "_x" << test_xstart[d][time_start][t] << "_y" << test_ystart[d][time_start][t]
-					<< "_z" << test_zstart[d][time_start][t] << ".raw";
+					<< "_x" << test_xstart[d][(time_start - test_start) / (timestep - 1)][t] << "_y" << test_ystart[d][(time_start - test_start) / (timestep - 1)][t]
+					<< "_z" << test_zstart[d][(time_start - test_start) / (timestep - 1)][t] << ".raw";
 				else if (time_start + t < 100)
 					os << root << "test_cropped\\" << "jet_mixfrac_00" << (time_start + t)
-					<< "_x" << test_xstart[d][time_start][t] << "_y" << test_ystart[d][time_start][t]
-					<< "_z" << test_zstart[d][time_start][t] << ".raw";
+					<< "_x" << test_xstart[d][(time_start - test_start) / (timestep - 1)][t] << "_y" << test_ystart[d][(time_start - test_start) / (timestep - 1)][t]
+					<< "_z" << test_zstart[d][(time_start - test_start) / (timestep - 1)][t] << ".raw";
 				else
 					os << root << "test_cropped\\" << "jet_mixfrac_0" << (time_start + t)
-					<< "_x" << test_xstart[d][time_start][t] << "_y" << test_ystart[d][time_start][t]
-					<< "_z" << test_zstart[d][time_start][t] << ".raw";
+					<< "_x" << test_xstart[d][(time_start - test_start) / (timestep - 1)][t] << "_y" << test_ystart[d][(time_start - test_start) / (timestep - 1)][t]
+					<< "_z" << test_zstart[d][(time_start - test_start) / (timestep - 1)][t] << ".raw";
 				string outFilename(os.str());
 				fprintf(fp_list, "%s\n", outFilename.substr(outFilename.rfind("\\") + 1).c_str());
 			}
-
-
-
 }

@@ -24,7 +24,7 @@ class TVDataset(Dataset):
                  loader=volume_loader):
         if train:
             f = open(os.path.join(root, "train_cropped", volume_list))
-        else
+        else:
             f = open(os.path.join(root, "test_cropped", volume_list))
         line = f.readline()
         self.dataSize = int(line)
@@ -36,10 +36,13 @@ class TVDataset(Dataset):
         while line:
             if line[-1] == '\n':
                 line = line[:-1]
-            self.vs.append(line)
+            if train:
+                self.vs.append(os.path.join("train_cropped", line))
+            else:
+                self.vs.append(os.path.join("test_cropped", line))
             line = f.readline()
 
-        self.dataSize = self.dataSize * self.timeRange
+        self.dataset_size = self.dataSize * self.timeRange
         self.root = root
         self.sub_size = sub_size
         self.max_k = max_k
@@ -71,6 +74,7 @@ class TVDataset(Dataset):
 
         v_is = torch.cat(vi_list, 0)
         sample = {"v_f": v_f, "v_b": v_b, "v_i": v_is}
+        # print("{} {}\n".format(vf_path, vb_path))
 
         return sample
 

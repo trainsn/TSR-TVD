@@ -63,8 +63,8 @@ def parse_args():
                         help="beta1 of Adam (default: 0.0)")
     parser.add_argument("--beta2", type=float, default=0.999,
                         help="beta2 of Adam (default: 0.999)")
-    parser.add_argument("--batch_size", type=int, default=4,
-                        help="batch size for training (default: 4)")
+    parser.add_argument("--batch_size", type=int, default=9,
+                        help="batch size for training")
     parser.add_argument("--training-step", type=int, default=3,
                         help="in the training phase, the number of intermediate volumes")
     parser.add_argument("--n-d", type=int, default=2,
@@ -73,15 +73,17 @@ def parse_args():
                         help="number of G upadates per iteration")
     parser.add_argument("--start-epoch", type=int, default=0,
                         help="start epoch number (default: 0)")
-    parser.add_argument("--epochs", type=int, default=100,
-                        help="number of epochs to train (default: 10)")
+    parser.add_argument("--epochs", type=int, default=1,
+                        help="number of epochs to train (default: 1)")
 
-    parser.add_argument("--log-every", type=int, default=10,
-                        help="log training status every given number of batches (default: 10)")
+    parser.add_argument("--log-every", type=int, default=5,
+                        help="log training status every given number of batches")
     parser.add_argument("--test-every", type=int, default=5,
-                        help="test every given number of epochs (default: 5")
+                        help="test every given number of sub-epochs (default: 5")
     parser.add_argument("--check-every", type=int, default=20,
-                        help="save checkpoint every given number of epochs (default: 20)")
+                        help="save checkpoint every given number of sub-epochs (default: 20)")
+    parser.add_argument("--sub-train-dataset-size", type=int, default=45,
+                        help="the dataset size of one sub-epoch")
 
     parser.add_argument("--block-size", type=int, default=64,
                         help="the size of the sub-block")
@@ -269,9 +271,9 @@ def main(args):
             train_loss += avg_loss
 
             # log training status
-            if i % args.log_every == 0:
+            if (i+1) % args.log_every == 0:
                 print("Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
-                    epoch, i * args.batch_size, len(train_loader.dataset), 100. * i / len(train_loader),
+                    epoch, (i+1) * args.batch_size, len(train_loader.dataset), 100. * (i+1) / len(train_loader),
                     avg_loss
                 ))
                 if args.gan_loss != "none":
@@ -281,29 +283,31 @@ def main(args):
                     d_losses.append(avg_d_loss)
                     g_losses.append(avg_g_loss)
                 train_losses.append(avg_loss)
+                print("====> SubEpoch: {} Average loss: {:.4f}".format(
+                    (i + 1) * args.batch_size // args.sub_train_dataset_size, train_loss * args.batch_size / args.sub_train_dataset_size
+                ))
+                train_loss = 0.
 
-        print("====> Epoch: {} Average loss: {:.4f}".format(
-            epoch, train_loss * args.batch_size / len(train_loader.dataset)
-        ))
+            # testing...
+            if (i + 1) * args.batch_size % (args.sub_train_dataset_size * args.test_every) == 0:
+                g_model.eval()
+                if args.gan_loss != "none":
+                    d_model.eval()
+                test_loss = 0.
+                with torch.no_grad():
+                    for i, sample in enumerate(test_loader):
+                        v_f = sample["v_f"].to(device)
+                        v_b = sample["v_b"].to(device)
+                        v_i = sample["v_i"].to(device)
+                        fake_volumes = g_model(v_f, v_b, args.training_step)
+                        test_loss += args.volume_loss_weight * mse_loss(v_i, fake_volumes).item()
 
-        # testing...
-        if epoch % args.test_every:
-            g_model.eval()
-            if args.gan_loss != "none":
-                d_model.eval()
-            test_loss = 0.
-            with torch.no_grad():
-                for i, sample in enumerate(test_loader):
-                    v_f = sample["v_f"].to(device)
-                    v_b = sample["v_b"].to(device)
-                    v_i = sample["v_i"].to(device)
-                    fake_volumes = g_model(v_f, v_b, args.training_step)
-                    test_loss += args.volume_loss_weight * mse_loss(v_i, fake_volumes).item()
-
-            test_losses.append(test_loss * args.batch_size / len(test_loader.dataset))
-            print("====> Epoch: {} Test set loss {:4f}".format(
-                epoch, test_losses[-1]
-            ))
+                test_losses.append(test_loss * args.batch_size / len(test_loader.dataset))
+                print("====> SubEpoch: {} Test set loss {:4f}".format(
+                    (i + 1) * args.batch_size // args.sub_train_dataset_size, test_losses[-1]
+                ))
+                torch.save(g_model.state_dict(),
+                           os.path.join(args.root, "model_" + str((i + 1) * args.batch_size // args.sub_train_dataset_size) + ".pth"))
 
         # saving...
         if epoch % args.check_every == 0:
