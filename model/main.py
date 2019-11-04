@@ -55,9 +55,9 @@ def parse_args():
     parser.add_argument("--feature-loss-weight", type=float, default=5e-2,
                         help="weight of the feature loss")
 
-    parser.add_argument("--lr", type=float, default=1e-4,
+    parser.add_argument("--lr", type=float, default=1e-5,
                         help="learning rate (default: 1e-4)")
-    parser.add_argument("--d-lr", type=float, default=4e-4,
+    parser.add_argument("--d-lr", type=float, default=4e-5,
                         help="learning rate of the discriminator (default 4e-4)")
     parser.add_argument("--beta1", type=float, default=0.0,
                         help="beta1 of Adam (default: 0.0)")
@@ -73,14 +73,14 @@ def parse_args():
                         help="number of G upadates per iteration")
     parser.add_argument("--start-epoch", type=int, default=0,
                         help="start epoch number (default: 0)")
-    parser.add_argument("--epochs", type=int, default=1,
-                        help="number of epochs to train (default: 1)")
+    parser.add_argument("--epochs", type=int, default=10 ,
+                        help="number of epochs to train")
 
     parser.add_argument("--log-every", type=int, default=5,
                         help="log training status every given number of batches")
-    parser.add_argument("--test-every", type=int, default=5,
+    parser.add_argument("--test-every", type=int, default=9,
                         help="test every given number of sub-epochs (default: 5")
-    parser.add_argument("--check-every", type=int, default=20,
+    parser.add_argument("--check-every", type=int, default=1,
                         help="save checkpoint every given number of sub-epochs (default: 20)")
     parser.add_argument("--sub-train-dataset-size", type=int, default=45,
                         help="the dataset size of one sub-epoch")
