@@ -251,15 +251,16 @@ int main() {
 
 	fp_list = fopen(volume_list.c_str(), "w");
 	fprintf(fp_list, "%d\n", test_dataSize);
-	fprintf(fp_list, "%d\n", (test_end - test_start) / (timestep - 1) + 1);
+	//fprintf(fp_list, "%d\n", (test_end - test_start) / (timestep - 1) + 1);
 
-	for (int time_start = test_start; time_start <= test_end; time_start += timestep - 1) {
+	/*for (int time_start = test_start; time_start <= test_end; time_start += timestep - 1) {
 		CropData(time_start, false);
-	}
+	}*/
 	
-	for (int d = 0; d < test_dataSize; d++)
-		for (int time_start = test_start; time_start < test_end; time_start += timestep - 1)
-			for (int t = 0; t < timestep; t += timestep - 1) {
+	for (int time_start = test_start; time_start < test_end; time_start += timestep - 1)
+		for (int t = 0; t < timestep; t += timestep - 1)
+			for (int d = 0; d < test_dataSize; d++)		
+			 {
 				printf("%d %d %d %d %d %d %d %d %f\n", d, time_start + t,
 					test_xstart[d][(time_start - test_start) / (timestep - 1)], test_ystart[d][(time_start - test_start) / (timestep - 1)], test_zstart[d][(time_start - test_start) / (timestep - 1)],
 					test_xmin[d][(time_start - test_start) / (timestep - 1)], test_ymin[d][(time_start - test_start) / (timestep - 1)], test_zmin[d][(time_start - test_start) / (timestep - 1)],

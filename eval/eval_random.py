@@ -24,7 +24,7 @@ sys.path.append("../datasets")
 sys.path.append("../model")
 from generator import Generator
 from discriminator import Discriminator
-from inferDataset import *
+from trainDataset import *
 from utils import *
 
 def parse_args():
@@ -70,8 +70,8 @@ def parse_args():
                         help="beta2 of Adam (default: 0.999)")
     parser.add_argument("--batch_size", type=int, default=1,
                         help="batch size for training (default: 4)")
-    parser.add_argument("--infering-step", type=int, default=3,
-                        help="in the infering phase, the number of intermediate volumes")
+    parser.add_argument("--training-step", type=int, default=3,
+                        help="in the training phase, the number of intermediate volumes")
     parser.add_argument("--n-d", type=int, default=2,
                         help="number of D updates per iteration")
     parser.add_argument("--n-g", type=int, default=1,
@@ -110,17 +110,27 @@ def main(args):
         Normalize(),
         ToTensor()
     ])
-
-    infer_dataset = InferTVDataset(
+    train_dataset = TVDataset(
         root=args.root,
-        sub_size=args.subs_size,
-        volume_list = "volume_test_list.txt",
-        max_k = args.infering_step,
+        sub_size=args.block_size,
+        volume_list="volume_train_list.txt",
+        max_k=args.training_step,
+        train=True,
+        transform=transform
+    )
+    test_dataset = TVDataset(
+        root=args.root,
+        sub_size=args.block_size,
+        volume_list="volume_test_list.txt",
+        max_k=args.training_step,
+        train=False,
         transform=transform
     )
 
     kwargs = {"num_workers": 4, "pin_memory": True} if args.cuda else {}
-    infer_loader = DataLoader(infer_dataset, batch_size=args.batch_size,
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size,
+                              shuffle=False, **kwargs)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size,
                              shuffle=False, **kwargs)
 
     # model
@@ -150,6 +160,15 @@ def main(args):
         g_model = nn.DataParallel(g_model)
     g_model.to(device)
 
+    # if args.gan_loss != "none":
+    #     d_model = Discriminator()
+    #     d_model.apply(discriminator_weights_init)
+    #     if args.sn:
+    #         d_model = add_sn(d_model)
+    #     if args.data_parallel and torch.cuda.device_count() > 1:
+    #         d_model = nn.DataParallel(d_model)
+    #     d_model.to(device)
+
     mse_loss = nn.MSELoss()
     adversarial_loss = nn.MSELoss()
     train_losses, test_losses = [], []
@@ -174,3 +193,30 @@ def main(args):
                   .format(args.resume, checkpoint["epoch"]))
 
     g_model.eval()
+    test_loss = 0.
+    with torch.no_grad():
+        for i, sample in tqdm(enumerate(test_loader)):
+            # print(sample["idx"].item(), sample["vf_name"])
+            v_f = sample["v_f"].to(device)
+            v_b = sample["v_b"].to(device)
+            v_i = sample["v_i"].to(device)
+            fake_volumes = g_model(v_f, v_b, args.training_step)
+            test_loss += args.volume_loss_weight * mse_loss(v_i, fake_volumes).item()
+            for j in range(fake_volumes.shape[1]):
+                volume = fake_volumes[0, j, 0]
+                min_value = -0.015  # -0.012058
+                max_value = 1.01  # 1.009666
+                mean = (min_value + max_value) / 2
+                std = mean - min_value
+                volume = volume.to("cpu").numpy() * std + mean
+                volume.tofile(os.path.join(args.save_pred, sample["vi_name"][j][0]))
+            # if (args.volume_loss_weight * mse_loss(v_i, fake_volumes).item() > 0.02):
+            #     pdb.set_trace()
+
+        print("====> Test set loss {:4f}".format(
+            test_loss * args.batch_size / len(test_loader.dataset)
+        ))
+
+if __name__ == "__main__":
+    main(parse_args())
+
