@@ -24,7 +24,8 @@ sys.path.append("../datasets")
 sys.path.append("../model")
 from generator import Generator
 from discriminator import Discriminator
-from dataset import *
+from inferDataset import *
+from utils import *
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Deep Learning Model")

@@ -22,7 +22,8 @@ from generator import Generator
 from discriminator import Discriminator
 import sys
 sys.path.append("../datasets")
-from dataset import *
+from trainDataset import *
+from utils import *
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Deep Learning Model")
