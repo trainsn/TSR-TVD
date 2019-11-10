@@ -36,6 +36,8 @@ def parse_args():
 
     parser.add_argument("--root", required=True, type=str,
                         help="root of the dataset")
+    parser.add_argument("--save-dir", required=True, type=str,
+                        help="dir of the output models")
     parser.add_argument("--resume", type=str, default="",
                         help="path to the latest checkpoint (default: none)")
 
@@ -55,15 +57,15 @@ def parse_args():
     parser.add_argument("--feature-loss-weight", type=float, default=5e-2,
                         help="weight of the feature loss")
 
-    parser.add_argument("--lr", type=float, default=1e-5,
+    parser.add_argument("--lr", type=float, default=1e-4,
                         help="learning rate (default: 1e-4)")
-    parser.add_argument("--d-lr", type=float, default=4e-5,
+    parser.add_argument("--d-lr", type=float, default=4e-4,
                         help="learning rate of the discriminator (default 4e-4)")
     parser.add_argument("--beta1", type=float, default=0.0,
                         help="beta1 of Adam (default: 0.0)")
     parser.add_argument("--beta2", type=float, default=0.999,
                         help="beta2 of Adam (default: 0.999)")
-    parser.add_argument("--batch_size", type=int, default=9,
+    parser.add_argument("--batch-size", type=int, default=1,
                         help="batch size for training")
     parser.add_argument("--training-step", type=int, default=3,
                         help="in the training phase, the number of intermediate volumes")
@@ -73,17 +75,15 @@ def parse_args():
                         help="number of G upadates per iteration")
     parser.add_argument("--start-epoch", type=int, default=0,
                         help="start epoch number (default: 0)")
-    parser.add_argument("--epochs", type=int, default=10 ,
+    parser.add_argument("--epochs", type=int, default=10,
                         help="number of epochs to train")
 
-    parser.add_argument("--log-every", type=int, default=5,
+    parser.add_argument("--log-every", type=int, default=3,
                         help="log training status every given number of batches")
     parser.add_argument("--test-every", type=int, default=9,
                         help="test every given number of sub-epochs (default: 5")
-    parser.add_argument("--check-every", type=int, default=1,
+    parser.add_argument("--check-every", type=int, default=30,
                         help="save checkpoint every given number of sub-epochs (default: 20)")
-    parser.add_argument("--sub-train-dataset-size", type=int, default=45,
-                        help="the dataset size of one sub-epoch")
 
     parser.add_argument("--block-size", type=int, default=64,
                         help="the size of the sub-block")
@@ -187,10 +187,10 @@ def main(args):
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint["epoch"]
             g_model.load_state_dict(checkpoint["g_model_state_dict"])
-            g_optimizer.load_state_dict(checkpoint["g_optimizer_state_dict"])
+            # g_optimizer.load_state_dict(checkpoint["g_optimizer_state_dict"])
             if args.gan_loss != "none":
                 d_model.load_state_dict(checkpoint["d_model_state_dict"])
-                d_optimizer.load_state_dict(checkpoint["d_optimizer_state_dict"])
+                # d_optimizer.load_state_dict(checkpoint["d_optimizer_state_dict"])
                 d_losses = checkpoint["d_losses"]
                 g_losses = checkpoint["g_losses"]
             train_losses = checkpoint["train_losses"]
@@ -271,6 +271,7 @@ def main(args):
             train_loss += avg_loss
 
             # log training status
+            subEpoch = (i + 1) // args.log_every
             if (i+1) % args.log_every == 0:
                 print("Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
                     epoch, (i+1) * args.batch_size, len(train_loader.dataset), 100. * (i+1) / len(train_loader),
@@ -284,12 +285,12 @@ def main(args):
                     g_losses.append(avg_g_loss)
                 train_losses.append(avg_loss)
                 print("====> SubEpoch: {} Average loss: {:.4f}".format(
-                    (i + 1) * args.batch_size // args.sub_train_dataset_size, train_loss * args.batch_size / args.sub_train_dataset_size
+                    subEpoch, train_loss / args.log_every
                 ))
                 train_loss = 0.
 
             # testing...
-            if (i + 1) * args.batch_size % (args.sub_train_dataset_size * args.test_every) == 0:
+            if (i + 1) % args.test_every == 0:
                 g_model.eval()
                 if args.gan_loss != "none":
                     d_model.eval()
@@ -304,36 +305,34 @@ def main(args):
 
                 test_losses.append(test_loss * args.batch_size / len(test_loader.dataset))
                 print("====> SubEpoch: {} Test set loss {:4f}".format(
-                    (i + 1) * args.batch_size // args.sub_train_dataset_size, test_losses[-1]
+                    subEpoch, test_losses[-1]
                 ))
-                torch.save(g_model.state_dict(),
-                           os.path.join(args.root, "model_" + str((i + 1) * args.batch_size // args.sub_train_dataset_size) + ".pth"))
 
-        # saving...
-        if epoch % args.check_every == 0:
-            print("=> saving checkpoint at epoch {}".format(epoch))
-            if args.gan_loss != "none":
-                torch.save({"epoch": epoch + 1,
-                            "g_model_state_dict": g_model.state_dict(),
-                            "g_optimizer_state_dict":  g_optimizer.state_dict(),
-                            "d_model_state_dict": d_model.state_dict(),
-                            "d_optimizer_state_dict": d_optimizer.state_dict(),
-                            "d_losses": d_losses,
-                            "g_losses": g_losses,
-                            "train_losses": train_losses,
-                            "test_losses": test_losses},
-                           os.path.join(args.root, "model_" + str(epoch) + "_" + "pth.tar")
-                           )
-            else:
-                torch.save({"epoch": epoch + 1,
-                            "g_model_state_dict": g_model.state_dict(),
-                            "g_optimizer_state_dict": g_optimizer.state_dict(),
-                            "train_losses": train_losses,
-                            "test_losses": test_losses},
-                           os.path.join(args.root, "model_" + str(epoch) + "_" + "pth.tar")
-                           )
-            torch.save(g_model.state_dict(),
-                       os.path.join(args.root, "model_" + str(epoch) + ".pth"))
+            # saving...
+            if (i+1) % args.check_every == 0:
+                print("=> saving checkpoint at epoch {}".format(epoch))
+                if args.gan_loss != "none":
+                    torch.save({"epoch": epoch + 1,
+                                "g_model_state_dict": g_model.state_dict(),
+                                "g_optimizer_state_dict":  g_optimizer.state_dict(),
+                                "d_model_state_dict": d_model.state_dict(),
+                                "d_optimizer_state_dict": d_optimizer.state_dict(),
+                                "d_losses": d_losses,
+                                "g_losses": g_losses,
+                                "train_losses": train_losses,
+                                "test_losses": test_losses},
+                               os.path.join(args.save_dir, "model_" + str(epoch) + "_" + str(subEpoch) + "_" + "pth.tar")
+                               )
+                else:
+                    torch.save({"epoch": epoch + 1,
+                                "g_model_state_dict": g_model.state_dict(),
+                                "g_optimizer_state_dict": g_optimizer.state_dict(),
+                                "train_losses": train_losses,
+                                "test_losses": test_losses},
+                               os.path.join(args.save_dir, "model_" + str(epoch) + "_" + str(subEpoch) + "_" + "pth.tar")
+                               )
+                torch.save(g_model.state_dict(),
+                           os.path.join(args.save_dir, "model_" + str(epoch) + "_" + str(subEpoch) + ".pth"))
 
 if __name__  == "__main__":
     main(parse_args())

@@ -73,8 +73,11 @@ class TVDataset(Dataset):
             vi_list.append(v_i)
 
         v_is = torch.cat(vi_list, 0)
-        sample = {"v_f": v_f, "v_b": v_b, "v_i": v_is}
-        # print("{} {}\n".format(vf_path, vb_path))
+        sample = { "vf_name": self.vs[index*(self.max_k+2)],
+                   "vb_name": self.vs[index*(self.max_k+2) + self.max_k + 1],
+                   "vi_name": [self.vs[idx] for idx in range(index*(self.max_k+2) + 1, index*(self.max_k+2) + self.max_k + 1)],
+                   "v_f": v_f, "v_b": v_b, "v_i": v_is}
+        # print("{} {}\n".format(index, self.vs[index*(self.max_k+2)]))
 
         return sample
 

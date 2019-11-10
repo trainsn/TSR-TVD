@@ -18,10 +18,12 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision.utils import save_image
 from torchvision import transforms
 
+import sys
+sys.path.append("../")
+sys.path.append("../datasets")
+sys.path.append("../model")
 from generator import Generator
 from discriminator import Discriminator
-import sys
-sys.path.append("../datasets")
 from dataset import *
 
 def parse_args():
@@ -36,6 +38,8 @@ def parse_args():
 
     parser.add_argument("--root", required=True, type=str,
                         help="root of the dataset")
+    parser.add_argument("--save-pred", required=True, type=str,
+                        help="dir of predicted volumes")
     parser.add_argument("--resume", type=str, default="",
                         help="path to the latest checkpoint (default: none)")
 
@@ -63,7 +67,7 @@ def parse_args():
                         help="beta1 of Adam (default: 0.0)")
     parser.add_argument("--beta2", type=float, default=0.999,
                         help="beta2 of Adam (default: 0.999)")
-    parser.add_argument("--batch_size", type=int, default=4,
+    parser.add_argument("--batch_size", type=int, default=1,
                         help="batch size for training (default: 4)")
     parser.add_argument("--training-step", type=int, default=3,
                         help="in the training phase, the number of intermediate volumes")
@@ -76,11 +80,11 @@ def parse_args():
     parser.add_argument("--epochs", type=int, default=100,
                         help="number of epochs to train (default: 10)")
 
-    parser.add_argument("--log-every", type=int, default=10,
+    parser.add_argument("--log-every", type=int, default=3,
                         help="log training status every given number of batches (default: 10)")
-    parser.add_argument("--test-every", type=int, default=5,
+    parser.add_argument("--test-every", type=int, default=9,
                         help="test every given number of epochs (default: 5")
-    parser.add_argument("--check-every", type=int, default=20,
+    parser.add_argument("--check-every", type=int, default=30,
                         help="save checkpoint every given number of epochs (default: 20)")
 
     parser.add_argument("--block-size", type=int, default=64,
@@ -108,6 +112,7 @@ def main(args):
     train_dataset = TVDataset(
         root=args.root,
         sub_size=args.block_size,
+        volume_list="volume_train_list.txt",
         max_k=args.training_step,
         train=True,
         transform=transform
@@ -115,6 +120,7 @@ def main(args):
     test_dataset = TVDataset(
         root=args.root,
         sub_size=args.block_size,
+        volume_list="volume_test_list.txt",
         max_k=args.training_step,
         train=False,
         transform=transform
@@ -122,9 +128,9 @@ def main(args):
 
     kwargs = {"num_workers": 4, "pin_memory": True} if args.cuda else {}
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size,
-                              shuffle=True, **kwargs)
+                              shuffle=False, **kwargs)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size,
-                             shuffle=True, **kwargs)
+                             shuffle=False, **kwargs)
 
     # model
     def generator_weights_init(m):
@@ -184,4 +190,32 @@ def main(args):
             test_losses = checkpoint["test_losses"]
             print("=> load chekcpoint {} (epoch {})"
                   .format(args.resume, checkpoint["epoch"]))
+
+    g_model.eval()
+    test_loss = 0.
+    with torch.no_grad():
+        for i, sample in tqdm(enumerate(test_loader)):
+            # print(sample["idx"].item(), sample["vf_name"])
+            v_f = sample["v_f"].to(device)
+            v_b = sample["v_b"].to(device)
+            v_i = sample["v_i"].to(device)
+            fake_volumes = g_model(v_f, v_b, args.training_step)
+            test_loss += args.volume_loss_weight * mse_loss(v_i, fake_volumes).item()
+            for j in range(fake_volumes.shape[1]):
+                volume = fake_volumes[0, j, 0]
+                min_value = -0.015  # -0.012058
+                max_value = 1.01  # 1.009666
+                mean = (min_value + max_value) / 2
+                std = mean - min_value
+                volume = volume.to("cpu").numpy() * std + mean
+                volume.tofile(os.path.join(args.save_pred, sample["vi_name"][j][0]))
+            # if (args.volume_loss_weight * mse_loss(v_i, fake_volumes).item() > 0.02):
+            #     pdb.set_trace()
+
+        print("====> Test set loss {:4f}".format(
+            test_loss * args.batch_size / len(test_loader.dataset)
+        ))
+
+if __name__ == "__main__":
+    main(parse_args())
 

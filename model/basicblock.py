@@ -35,20 +35,23 @@ class ForwardBlockGenerator(nn.Module):
         self.relu = nn.ReLU()
 
         self.p1_conv0 = ConvLayer(in_channels, out_channels, kernel_size, stride)
-        self.p1_conv1 = ConvLayer(out_channels, out_channels, kernel_size, stride)
-        self.p1_conv2 = ConvLayer(out_channels, out_channels, kernel_size, stride)
+        self.p1_in0 = nn.InstanceNorm3d(out_channels, affine=True)
+        # self.p1_conv1 = ConvLayer(out_channels, out_channels, kernel_size, stride)
+        # self.p1_conv2 = ConvLayer(out_channels, out_channels, kernel_size, stride)
         self.p1_conv3 = ConvLayer(out_channels, out_channels, kernel_size, downsample_factor)
+        self.p1_in3 = nn.InstanceNorm3d(out_channels, affine=True)
 
         self.p2_conv0 = ConvLayer(in_channels, out_channels, kernel_size, downsample_factor)
+        self.p2_in0 = nn.InstanceNorm3d(out_channels, affine=True)
 
 
     def forward(self, x):
-        out = self.relu(self.p1_conv0(x))
-        out = self.relu(self.p1_conv1(out))
-        out = self.relu(self.p1_conv2(out))
-        out = self.p1_conv3(out)
+        out = self.relu(self.p1_in0(self.p1_conv0(x)))
+        # out = self.relu(self.p1_conv1(out))
+        # out = self.relu(self.p1_conv2(out))
+        out = self.p1_in3(self.p1_conv3(out))
 
-        residual = self.p2_conv0(x)
+        residual = self.p2_in0(self.p2_conv0(x))
 
         out = out + residual
         return out
@@ -60,19 +63,22 @@ class BackwardBlockGenerator(nn.Module):
         self.relu = nn.ReLU()
 
         self.p1_conv0 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride, upsample=upsample_factor)
-        self.p1_conv1 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride)
-        self.p1_conv2 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride)
+        self.p1_in0 = nn.InstanceNorm3d(in_channels, affine=True)
+        # self.p1_conv1 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride)
+        # self.p1_conv2 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride)
         self.p1_conv3 = UpsampleConvLayer(in_channels, out_channels, kernel_size, stride)
+        self.p1_in3 = nn.InstanceNorm3d(out_channels, affine=True)
 
         self.p2_conv0 = UpsampleConvLayer(in_channels, out_channels, kernel_size, stride, upsample=upsample_factor)
+        self.p2_in0 = nn.InstanceNorm3d(out_channels, affine=True)
 
     def forward(self, x):
-        out = self.relu(self.p1_conv0(x))
-        out = self.relu(self.p1_conv1(out))
-        out = self.relu(self.p1_conv1(out))
-        out = self.p1_conv3(out)
+        out = self.relu(self.p1_in0(self.p1_conv0(x)))
+        # out = self.relu(self.p1_conv1(out))
+        # out = self.relu(self.p1_conv2(out))
+        out = self.p1_in3(self.p1_conv3(out))
 
-        residual = self.p2_conv0(x)
+        residual = self.p2_in0(self.p2_conv0(x))
 
         out = out + residual
         return out

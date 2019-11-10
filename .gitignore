@@ -462,3 +462,4 @@ MigrationBackup/
 
 exavisData
 *.txt
+*.raw

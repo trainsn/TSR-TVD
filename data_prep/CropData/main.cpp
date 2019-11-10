@@ -121,7 +121,7 @@ void CropData(int time_start, bool train) {
 				test_xmin[d][(time_start - test_start) / (timestep - 1)][t] = minx;
 				test_ymin[d][(time_start - test_start) / (timestep - 1)][t] = miny;
 				test_zmin[d][(time_start - test_start) / (timestep - 1)][t] = minz;
-				test_Vmax[d][(time_start - test_start) / (timestep - 1)][t] = minV;
+				test_Vmin[d][(time_start - test_start) / (timestep - 1)][t] = minV;
 				test_xmax[d][(time_start - test_start) / (timestep - 1)][t] = maxx;
 				test_ymax[d][(time_start - test_start) / (timestep - 1)][t] = maxy;
 				test_zmax[d][(time_start - test_start) / (timestep - 1)][t] = maxz;
