@@ -1,6 +1,7 @@
 import os
 import struct
 import numpy as np
+import pdb
 
 import torch
 from torch.utils.data import Dataset
@@ -41,10 +42,12 @@ class InferTVDataset(Dataset):
             v_f = self.transform(v_f)
             v_b = self.transform(v_b)
 
+        # print(self.vs[self.dataset_size + index])
         sample = {
             "vf_name": self.vs[index],
-            "vb_name": self.self.vs[self.dataset_size + index],
-            "v_f": v_f, "v_b": v_b}
+            "vb_name": self.vs[self.dataset_size + index],
+            "v_f": v_f, "v_b": v_b
+        }
 
         return sample
 

@@ -23,7 +23,7 @@ from discriminator import Discriminator
 import sys
 sys.path.append("../datasets")
 from trainDataset import *
-from utils import *
+import utils
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Deep Learning Model")
@@ -105,8 +105,8 @@ def main(args):
 
     # data loader
     transform = transforms.Compose([
-        Normalize(),
-        ToTensor()
+        utils.Normalize(),
+        utils.ToTensor()
     ])
     train_dataset = TVDataset(
         root=args.root,

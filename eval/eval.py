@@ -113,8 +113,8 @@ def main(args):
 
     infer_dataset = InferTVDataset(
         root=args.root,
-        sub_size=args.subs_size,
-        volume_list = "volume_test_list.txt",
+        sub_size=args.block_size,
+        volume_list="volume_test_list.txt",
         max_k = args.infering_step,
         transform=transform
     )
@@ -177,8 +177,8 @@ def main(args):
     inferRes = []
     zSize, ySize, xSize = 120, 720, 480
     for i in range(args.infering_step):
-        inferRes.append(np.zeros(zSize, ySize, xSize))
-    inferScale = np.zeros(zSize, ySize, xSize)
+        inferRes.append(np.zeros((zSize, ySize, xSize)))
+    inferScale = np.zeros((zSize, ySize, xSize))
     time_start = 0
     volume_type = ''
 
@@ -187,7 +187,7 @@ def main(args):
             v_f = sample["v_f"].to(device)
             v_b = sample["v_b"].to(device)
             fake_volumes = g_model(v_f, v_b, args.infering_step)
-            volume_type, time_start, x_start, y_start, z_start = utils.Parse(sample["vf_name"])
+            volume_type, time_start, x_start, y_start, z_start = utils.Parse(sample["vf_name"][0])
 
             for j in range(fake_volumes.shape[1]):
                 volume = fake_volumes[0, j, 0]
@@ -197,14 +197,16 @@ def main(args):
                 std = mean - min_value
                 volume = volume.to("cpu").numpy() * std + mean
 
-                inferRes[j][z_start:z_start+args.subs_size,
-                y_start:y_start+args.subs_size, x_start:x_start+args.subs_size] += volume
+                inferRes[j][z_start:z_start+args.block_size,
+                y_start:y_start+args.block_size, x_start:x_start+args.block_size] += volume
                 if j == 0:
-                    inferScale[z_start:z_start + args.subs_size,
-                    y_start:y_start + args.subs_size, x_start:x_start + args.subs_size] += 1
+                    inferScale[z_start:z_start + args.block_size,
+                    y_start:y_start + args.block_size, x_start:x_start + args.block_size] += 1
+                # pdb.set_trace()
 
     for j in range(args.infering_step):
         inferRes[j] = inferRes[j] / inferScale
+        inferRes[j] = inferRes[j].astype(np.float32)
 
         volume_name = volume_type + '_' + ("%04d" % (time_start+j+1)) + '.raw'
         inferRes[j].tofile(os.path.join(args.save_pred, volume_name))

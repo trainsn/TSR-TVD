@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import pdb
 
 class Normalize(object):
     def __call__(self, volume):
@@ -18,6 +19,8 @@ class ToTensor(object):
         return volume
 
 def Parse(volume_name):
+    volume_name = volume_name[volume_name.find('/') + 1:]
+
     volume_type = volume_name[:volume_name.find('_')]
     volume_name = volume_name[volume_name.find('_') + 1:]
     volume_type += '_' + volume_name[:volume_name.find('_')]
@@ -32,6 +35,6 @@ def Parse(volume_name):
     y_start = int(volume_name[1:volume_name.find('_')])
 
     volume_name = volume_name[volume_name.find('_') + 1:]
-    z_start = int(volume_name[1:volume_name.find('_')])
+    z_start = int(volume_name[1:volume_name.find('.')])
 
     return volume_type, timestep, x_start, y_start, z_start
