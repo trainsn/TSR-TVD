@@ -25,7 +25,7 @@ sys.path.append("../model")
 from generator import Generator
 from discriminator import Discriminator
 from inferDataset import *
-from utils import *
+import utils
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Deep Learning Model")
@@ -107,8 +107,8 @@ def main(args):
 
     # data loader
     transform = transforms.Compose([
-        Normalize(),
-        ToTensor()
+        utils.Normalize(),
+        utils.ToTensor()
     ])
 
     infer_dataset = InferTVDataset(
@@ -174,3 +174,45 @@ def main(args):
                   .format(args.resume, checkpoint["epoch"]))
 
     g_model.eval()
+    inferRes = []
+    zSize, ySize, xSize = 120, 720, 480
+    for i in range(args.infering_step):
+        inferRes.append(np.zeros(zSize, ySize, xSize))
+    inferScale = np.zeros(zSize, ySize, xSize)
+    time_start = 0
+    volume_type = ''
+
+    with torch.no_grad():
+        for i, sample in tqdm(enumerate(infer_loader)):
+            v_f = sample["v_f"].to(device)
+            v_b = sample["v_b"].to(device)
+            fake_volumes = g_model(v_f, v_b, args.infering_step)
+            volume_type, time_start, x_start, y_start, z_start = utils.Parse(sample["vf_name"])
+
+            for j in range(fake_volumes.shape[1]):
+                volume = fake_volumes[0, j, 0]
+                min_value = -0.015  # -0.012058
+                max_value = 1.01  # 1.009666
+                mean = (min_value + max_value) / 2
+                std = mean - min_value
+                volume = volume.to("cpu").numpy() * std + mean
+
+                inferRes[j][z_start:z_start+args.subs_size,
+                y_start:y_start+args.subs_size, x_start:x_start+args.subs_size] += volume
+                if j == 0:
+                    inferScale[z_start:z_start + args.subs_size,
+                    y_start:y_start + args.subs_size, x_start:x_start + args.subs_size] += 1
+
+    for j in range(args.infering_step):
+        inferRes[j] = inferRes[j] / inferScale
+
+        volume_name = volume_type + '_' + ("%04d" % (time_start+j+1)) + '.raw'
+        inferRes[j].tofile(os.path.join(args.save_pred, volume_name))
+
+if __name__ == "__main__":
+    main(parse_args())
+
+
+
+
+

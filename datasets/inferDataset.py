@@ -41,7 +41,10 @@ class InferTVDataset(Dataset):
             v_f = self.transform(v_f)
             v_b = self.transform(v_b)
 
-        sample = {"v_f": v_f, "v_b": v_b}
+        sample = {
+            "vf_name": self.vs[index],
+            "vb_name": self.self.vs[self.dataset_size + index],
+            "v_f": v_f, "v_b": v_b}
 
         return sample
 

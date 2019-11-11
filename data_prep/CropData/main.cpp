@@ -253,9 +253,9 @@ int main() {
 	fprintf(fp_list, "%d\n", test_dataSize);
 	//fprintf(fp_list, "%d\n", (test_end - test_start) / (timestep - 1) + 1);
 
-	/*for (int time_start = test_start; time_start <= test_end; time_start += timestep - 1) {
+	for (int time_start = test_start; time_start <= test_end; time_start += timestep - 1) {
 		CropData(time_start, false);
-	}*/
+	}
 	
 	for (int time_start = test_start; time_start < test_end; time_start += timestep - 1)
 		for (int t = 0; t < timestep; t += timestep - 1)
