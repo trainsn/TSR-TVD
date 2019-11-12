@@ -18,8 +18,8 @@ FILE *fp_list;
 // load raw data
 char root[256] = "D:\\OSU\\Grade1\\Research\\TSR-TVD\\exavisData\\combustion\\";
 const int train_end = 45;
-const int test_start = 66;
-const int test_end = 70;
+const int test_start = 122;
+const int test_end = 122;
 const int timestep = 5;
 const int train_dataSize = 3;
 const int test_xTimes = 30;
@@ -137,7 +137,7 @@ void CropOneIns(int z_start, int y_start, int x_start, int time_start, int t, fl
 
 void CropData(int time_start, bool train) {
 	float *raw_data[timestep];
-	for (int t = time_start; t < time_start + timestep; t++) {
+	for (int t = time_start; t < time_start + timestep && t <= test_end; t++) {
 		ostringstream os;
 		if (t < 10)
 			os << root << "jet_000" << t << "\\jet_mixfrac_000" << t << ".dat";
@@ -170,7 +170,6 @@ void CropData(int time_start, bool train) {
 	}
 	else {
 		for (int zc = 0; zc < test_zTimes; zc++) {
-			
 			int z_start = (int)(float((ziVSize - zSubSize)) / ((test_zTimes - 1) ? (test_zTimes - 1) : 1) * zc);
 			for (int yc = 0; yc < test_yTimes; yc++) {
 				int y_start = (int)(float((yiVSize - ySubSize)) / ((test_yTimes - 1) ? (test_yTimes - 1) : 1) * yc);
@@ -242,10 +241,10 @@ int main() {
 
 	// testing data prep 
 	os.str("");
-	os << root << "test_cropped\\" << "volume_test_list.txt";
+	os << root << "test_cropped\\" << "volume_test_list_" << test_start << "-" << test_end << ".txt";
 	string volume_list(os.str());
 	os.str("");
-	os << root << "test_cropped\\" << "volume_test_statis.txt";
+	os << root << "test_cropped\\" << "volume_test_statis_" << test_start << "-" << test_end << ".txt";
 	string volume_statis(os.str());
 	freopen(volume_statis.c_str(), "w", stdout);
 

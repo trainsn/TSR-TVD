@@ -10,9 +10,12 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Deep Learning Model")
     parser.add_argument("--root", required=True, type=str,
                         help="root of the dataset")
-    parser.add_argument("--time-start", type=int, default=50,
+    parser.add_argument("--test-start", type=int, default=50,
                         help="starting key timestep")
-    parser.add_argument("--time-end ", type=int. default=)
+    parser.add_argument("--test-end", type=int, default=54,
+                        help="ending key timestep")
+    parser.add_argument("--infering-step", type=int, default=3,
+                        help="in the infering phase, the number of intermediate volumes")
     return parser.parse_args()
 
 def main(args):
@@ -20,15 +23,12 @@ def main(args):
     volume_size_r = 1. / zSize / ySize / xSize
 
     gt_root = os.path.join(args.root, "exavisData", "combustion")
-    test_start = 50
-    test_end = 54
-    infering_step = 3
     psnrs = 0
     file_count = 0
-    for i in range(test_start, test_end+1):
-        if i % (infering_step+1) != 2:
+    for i in range(args.test_start, args.test_end+1):
+        if i % (args.infering_step+1) != 2:
             idx = ("%04d" % i)
-            gt_filepath = os.path.join(gt_root, "jet_" + idx, "jet_mixfrac_" + idx + ".dat" )
+            gt_filepath = os.path.join(gt_root, "jet_" + idx, "jet_mixfrac_" + idx + ".dat")
             gt = volume_loader(gt_filepath, zSize, ySize, xSize)
             pred_filepath = os.path.join(args.root, "save_pred", "jet_mixfrac_" + idx + ".raw")
             pred = volume_loader(pred_filepath, zSize, ySize, xSize)
@@ -38,13 +38,10 @@ def main(args):
             print("jet_mixfrac_{}, PSNR {}".format(idx, psnr))
             psnrs += psnr
             file_count += 1
-    print("Average PSNR: {}", psnrs)
+    print("Average PSNR: {}".format(psnrs / file_count))
 
 if __name__ == "__main__":
     main(parse_args())
-
-
-
 
 
 
