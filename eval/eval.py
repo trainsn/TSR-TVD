@@ -53,12 +53,6 @@ def parse_args():
                         help ="enable volume loss")
     parser.add_argument("--feature-loss", action="store_true", default=False,
                         help="enable feature loss")
-    parser.add_argument("--gan-loss-weight" , type=float, default=1e-3,
-                        help="weight of the adversarial loss")
-    parser.add_argument("--volume-loss-weight", type=float, default=1,
-                        help="weight of the volume loss (mse)")
-    parser.add_argument("--feature-loss-weight", type=float, default=5e-2,
-                        help="weight of the feature loss")
 
     parser.add_argument("--lr", type=float, default=1e-4,
                         help="learning rate (default: 1e-4)")
@@ -80,13 +74,6 @@ def parse_args():
                         help="start epoch number (default: 0)")
     parser.add_argument("--epochs", type=int, default=100,
                         help="number of epochs to train (default: 10)")
-
-    parser.add_argument("--log-every", type=int, default=3,
-                        help="log training status every given number of batches (default: 10)")
-    parser.add_argument("--test-every", type=int, default=9,
-                        help="test every given number of epochs (default: 5")
-    parser.add_argument("--check-every", type=int, default=30,
-                        help="save checkpoint every given number of epochs (default: 20)")
 
     parser.add_argument("--block-size", type=int, default=64,
                         help="the size of the sub-block")

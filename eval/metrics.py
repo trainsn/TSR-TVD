@@ -12,9 +12,9 @@ def parse_args():
                         help="root of the dataset")
     parser.add_argument("--test-start", type=int, default=50,
                         help="starting key timestep")
-    parser.add_argument("--test-end", type=int, default=54,
+    parser.add_argument("--test-end", type=int, default=66,
                         help="ending key timestep")
-    parser.add_argument("--infering-step", type=int, default=3,
+    parser.add_argument("--infering-step", type=int, default=7,
                         help="in the infering phase, the number of intermediate volumes")
     return parser.parse_args()
 

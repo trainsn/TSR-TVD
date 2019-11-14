@@ -18,8 +18,8 @@ FILE *fp_list;
 // load raw data
 char root[256] = "D:\\OSU\\Grade1\\Research\\TSR-TVD\\exavisData\\combustion\\";
 const int train_end = 45;
-const int test_start = 122;
-const int test_end = 122;
+const int test_start = 112;
+const int test_end = 112;
 const int timestep = 5;
 const int train_dataSize = 3;
 const int test_xTimes = 30;
