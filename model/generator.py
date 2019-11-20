@@ -31,7 +31,7 @@ class Generator(nn.Module):
         self.back_res4 = BackwardBlockGenerator(in_channels=16, out_channels=1, kernel_size=5, stride=1, upsample_factor=2)
         self.tanh = nn.Tanh()
 
-    def forward(self, x_f, x_b, total_step):
+    def forward(self, x_f, x_b, total_step, wo_ori_volume):
         # forward prediction
         internal_state = []
         outputs_f = []
@@ -44,18 +44,18 @@ class Generator(nn.Module):
             x = self.for_res4(x)
 
             # temporal component
-            for i in range(self.num_layers):
-                # all cells are initialized in the first step
-                name = 'cell{}'.format(i)
-                if step == 0:
-                    bsize, _, height, length, width = x.size()
-                    (h, c) = getattr(self, name).init_hidden(batch_size=bsize, hidden_channels=64,
-                                                             shape=(height, length, width))
-                    internal_state.append((h, c))
-                # do forward
-                (h, c) = internal_state[i]
-                x, new_c = getattr(self, name)(x, h, c)
-                internal_state[i] = (x, new_c)
+            # for i in range(self.num_layers):
+            #     # all cells are initialized in the first step
+            #     name = 'cell{}'.format(i)
+            #     if step == 0:
+            #         bsize, _, height, length, width = x.size()
+            #         (h, c) = getattr(self, name).init_hidden(batch_size=bsize, hidden_channels=64,
+            #                                                  shape=(height, length, width))
+            #         internal_state.append((h, c))
+            #     # do forward
+            #     (h, c) = internal_state[i]
+            #     x, new_c = getattr(self, name)(x, h, c)
+            #     internal_state[i] = (x, new_c)
 
             # upscaling component
             x = self.back_res1(x)
@@ -106,9 +106,13 @@ class Generator(nn.Module):
         # blend module
         outputs = []
         for step in range(total_step):
-            w = (step+1) / (total_step+1)
-            lerp = (1-w) * x_f + w * x_b
-            outputs.append(lerp + 0.5 * (outputs_f[step] + outputs_b[total_step-1-step]))
+            if wo_ori_volume:
+                outputs.append(0.5 * (outputs_f[step] + outputs_b[total_step - 1 - step]))
+            else:
+                w = (step + 1) / (total_step + 1)
+                lerp = (1 - w) * x_f + w * x_b
+                outputs.append(lerp + 0.5 * (outputs_f[step] + outputs_b[total_step - 1 - step]))
+            # outputs.append(lerp)
             outputs[step] = outputs[step].unsqueeze(1)
         outputs = torch.cat(outputs, 1)
 

@@ -68,7 +68,7 @@ def parse_args():
                         help="beta1 of Adam (default: 0.0)")
     parser.add_argument("--beta2", type=float, default=0.999,
                         help="beta2 of Adam (default: 0.999)")
-    parser.add_argument("--batch_size", type=int, default=1,
+    parser.add_argument("--batch-size", type=int, default=1,
                         help="batch size for training (default: 4)")
     parser.add_argument("--training-step", type=int, default=3,
                         help="in the training phase, the number of intermediate volumes")
@@ -195,23 +195,42 @@ def main(args):
     g_model.eval()
     test_loss = 0.
     with torch.no_grad():
-        for i, sample in tqdm(enumerate(test_loader)):
+        for i, sample in enumerate(train_loader):
             # print(sample["idx"].item(), sample["vf_name"])
             v_f = sample["v_f"].to(device)
             v_b = sample["v_b"].to(device)
             v_i = sample["v_i"].to(device)
             fake_volumes = g_model(v_f, v_b, args.training_step)
             test_loss += args.volume_loss_weight * mse_loss(v_i, fake_volumes).item()
+
             for j in range(fake_volumes.shape[1]):
-                volume = fake_volumes[0, j, 0]
                 min_value = -0.015  # -0.012058
                 max_value = 1.01  # 1.009666
                 mean = (min_value + max_value) / 2
                 std = mean - min_value
-                volume = volume.to("cpu").numpy() * std + mean
-                volume.tofile(os.path.join(args.save_pred, sample["vi_name"][j][0]))
-            # if (args.volume_loss_weight * mse_loss(v_i, fake_volumes).item() > 0.02):
-            #     pdb.set_trace()
+
+                real = v_i[0, j, 0]
+                real = real.to("cpu").numpy() * std + mean
+                diff = real.max() - real.min()
+
+                tsr = fake_volumes[0, j, 0]
+                tsr = tsr.to("cpu").numpy() * std + mean
+                mse_tsr = np.mean(np.power(tsr - real, 2.))
+                # psnr_tsr = 20. * np.log10(diff) - 10. * np.log10(mse_tsr)
+
+                offset = j + 1
+                interval = args.training_step + 1
+                lerp = (1-offset/interval) * v_f + offset/interval * v_b
+                lerp = lerp.to("cpu").numpy() * std + mean
+                mse_lerp = np.mean(np.power(lerp - real, 2.))
+                # psnr_lerp = 20. * np.log10(diff) - 10. * np.log10(mse_lerp)
+
+                # pdb.set_trace()
+                print("sample {}, intermediate {}, TSR MSE {:.6f}, LERP MSE {:.6f}"
+                      .format(sample["vf_name"], j+1, mse_tsr, mse_lerp))
+                # volume.tofile(os.path.join(args.save_pred, sample["vi_name"][j][0]))
+            # if (args.volume_loss_weight * mse_loss(v_i, fake_volumes).item() > 0.004):
+            #     print("{} {}".format(sample["vf_name"], args.volume_loss_weight * mse_loss(v_i, fake_volumes).item()))
 
         print("====> Test set loss {:4f}".format(
             test_loss * args.batch_size / len(test_loader.dataset)

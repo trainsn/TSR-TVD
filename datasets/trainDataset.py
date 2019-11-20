@@ -24,7 +24,7 @@ class TVDataset(Dataset):
         if train:
             f = open(os.path.join(root, "train_cropped", volume_list))
         else:
-            f = open(os.path.join(root, "test_cropped", volume_list))
+            f = open(os.path.join(root, "test_cropped_random", volume_list))
         line = f.readline()
         self.dataSize = int(line)
         line = f.readline()
@@ -38,7 +38,7 @@ class TVDataset(Dataset):
             if train:
                 self.vs.append(os.path.join("train_cropped", line))
             else:
-                self.vs.append(os.path.join("test_cropped", line))
+                self.vs.append(os.path.join("test_cropped_random", line))
             line = f.readline()
 
         self.dataset_size = self.dataSize * self.timeRange

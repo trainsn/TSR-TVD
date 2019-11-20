@@ -57,6 +57,8 @@ def parse_args():
                         help="weight of the volume loss (mse)")
     parser.add_argument("--feature-loss-weight", type=float, default=5e-2,
                         help="weight of the feature loss")
+    parser.add_argument("--wo-ori-volume", action="store_true", default=False,
+                        help="during training, without the original volume")
 
     parser.add_argument("--lr", type=float, default=1e-4,
                         help="learning rate (default: 1e-4)")
@@ -215,7 +217,7 @@ def main(args):
             v_b = sample["v_b"].to(device)
             v_i = sample["v_i"].to(device)
             g_optimizer.zero_grad()
-            fake_volumes = g_model(v_f, v_b, args.training_step)
+            fake_volumes = g_model(v_f, v_b, args.training_step, args.wo_ori_volume)
 
             # adversarial loss
             # update discriminator
@@ -301,7 +303,7 @@ def main(args):
                         v_f = sample["v_f"].to(device)
                         v_b = sample["v_b"].to(device)
                         v_i = sample["v_i"].to(device)
-                        fake_volumes = g_model(v_f, v_b, args.training_step)
+                        fake_volumes = g_model(v_f, v_b, args.training_step, args.wo_ori_volume)
                         test_loss += args.volume_loss_weight * mse_loss(v_i, fake_volumes).item()
 
                 test_losses.append(test_loss * args.batch_size / len(test_loader.dataset))

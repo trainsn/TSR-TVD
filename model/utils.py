@@ -4,8 +4,8 @@ import pdb
 
 class Normalize(object):
     def __call__(self, volume):
-        min_value = -0.015 # -0.012058
-        max_value = 1.01 # 1.009666
+        min_value = -0.015  # -0.012058
+        max_value = 1.01  # 1.009666
         mean = (min_value + max_value) / 2
         std = mean - min_value
 
