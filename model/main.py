@@ -210,35 +210,38 @@ def main(args):
         train_loss = 0.
         for i, sample in enumerate(train_loader):
             # adversarial ground truths
-            real_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1, 1, 1, 1).fill_(1.0), requires_grad=False)
-            fake_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1, 1, 1, 1).fill_(0.0), requires_grad=False)
+            # real_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1, 1, 1, 1).fill_(1.0), requires_grad=False)
+            # fake_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1, 1, 1, 1).fill_(0.0), requires_grad=False)
+            #
+            # v_f = sample["v_f"].to(device)
+            # v_b = sample["v_b"].to(device)
+            # v_i = sample["v_i"].to(device)
+            # g_optimizer.zero_grad()
+            # fake_volumes = g_model(v_f, v_b, args.training_step, args.wo_ori_volume)
 
             v_f = sample["v_f"].to(device)
-            v_b = sample["v_b"].to(device)
-            v_i = sample["v_i"].to(device)
-            g_optimizer.zero_grad()
-            fake_volumes = g_model(v_f, v_b, args.training_step, args.wo_ori_volume)
+            fake_volume = g_model(v_f)
 
             # adversarial loss
             # update discriminator
-            if args.gan_loss != "none":
-                avg_d_loss = 0.
-                avg_d_loss_real = 0.
-                avg_d_loss_fake = 0.
-                for k in range(args.n_d):
-                    d_optimizer.zero_grad()
-                    decisions = d_model(v_i)
-                    d_loss_real = adversarial_loss(decisions, real_label)
-                    fake_decisions = d_model(fake_volumes.detach())
-
-                    d_loss_fake = adversarial_loss(fake_decisions, fake_label)
-                    d_loss = d_loss_real + d_loss_fake
-                    d_loss.backward()
-                    avg_d_loss += d_loss.item() / args.n_d
-                    avg_d_loss_real += d_loss_real / args.n_d
-                    avg_d_loss_fake += d_loss_fake / args.n_d
-
-                    d_optimizer.step()
+            # if args.gan_loss != "none":
+            #     avg_d_loss = 0.
+            #     avg_d_loss_real = 0.
+            #     avg_d_loss_fake = 0.
+            #     for k in range(args.n_d):
+            #         d_optimizer.zero_grad()
+            #         decisions = d_model(v_i)
+            #         d_loss_real = adversarial_loss(decisions, real_label)
+            #         fake_decisions = d_model(fake_volumes.detach())
+            #
+            #         d_loss_fake = adversarial_loss(fake_decisions, fake_label)
+            #         d_loss = d_loss_real + d_loss_fake
+            #         d_loss.backward()
+            #         avg_d_loss += d_loss.item() / args.n_d
+            #         avg_d_loss_real += d_loss_real / args.n_d
+            #         avg_d_loss_fake += d_loss_fake / args.n_d
+            #
+            #         d_optimizer.step()
 
             # update generator
             if args.gan_loss != "none":
@@ -249,23 +252,26 @@ def main(args):
                 g_optimizer.zero_grad()
 
                 # adversarial loss
-                if args.gan_loss != "none":
-                    fake_decisions = d_model(fake_volumes)
-                    g_loss = args.gan_loss_weight * adversarial_loss(fake_decisions, real_label)
-                    loss += g_loss
-                    avg_g_loss += g_loss.item() / args.n_g
+                # if args.gan_loss != "none":
+                #     fake_decisions = d_model(fake_volumes)
+                #     g_loss = args.gan_loss_weight * adversarial_loss(fake_decisions, real_label)
+                #     loss += g_loss
+                #     avg_g_loss += g_loss.item() / args.n_g
 
                 # volume loss
+                # if args.volume_loss:
+                #     volume_loss = args.volume_loss_weight * mse_loss(v_i, fake_volumes)
+                #     loss += volume_loss
                 if args.volume_loss:
-                    volume_loss = args.volume_loss_weight * mse_loss(v_i, fake_volumes)
+                    volume_loss = args.volume_loss_weight * mse_loss(v_f, fake_volume)
                     loss += volume_loss
 
                 # feature loss
-                if args.feature_loss:
-                    feat_real = d_model.extract_features(v_i)
-                    feat_fake = d_model.extract_features(fake_volumes)
-                    for m in range(len(feat_real)):
-                        loss += args.feature_loss_weight / len(feat_real) * mse_loss(feat_real[m], feat_fake[m])
+                # if args.feature_loss:
+                #     feat_real = d_model.extract_features(v_i)
+                #     feat_fake = d_model.extract_features(fake_volumes)
+                #     for m in range(len(feat_real)):
+                #         loss += args.feature_loss_weight / len(feat_real) * mse_loss(feat_real[m], feat_fake[m])
 
                 avg_loss += loss / args.n_g
                 loss.backward()
@@ -280,12 +286,12 @@ def main(args):
                     epoch, (i+1) * args.batch_size, len(train_loader.dataset), 100. * (i+1) / len(train_loader),
                     avg_loss
                 ))
-                if args.gan_loss != "none":
-                    print("DLossReal: {:.6f} DLossFake: {:.6f} DLoss: {:.6f}, GLoss: {:.6f}".format(
-                        avg_d_loss_real, avg_d_loss_fake, avg_d_loss, avg_g_loss
-                    ))
-                    d_losses.append(avg_d_loss)
-                    g_losses.append(avg_g_loss)
+                # if args.gan_loss != "none":
+                #     print("DLossReal: {:.6f} DLossFake: {:.6f} DLoss: {:.6f}, GLoss: {:.6f}".format(
+                #         avg_d_loss_real, avg_d_loss_fake, avg_d_loss, avg_g_loss
+                #     ))
+                #     d_losses.append(avg_d_loss)
+                #     g_losses.append(avg_g_loss)
                 train_losses.append(avg_loss)
                 print("====> SubEpoch: {} Average loss: {:.4f}".format(
                     subEpoch, train_loss / args.log_every
@@ -293,49 +299,49 @@ def main(args):
                 train_loss = 0.
 
             # testing...
-            if (i + 1) % args.test_every == 0:
-                g_model.eval()
-                if args.gan_loss != "none":
-                    d_model.eval()
-                test_loss = 0.
-                with torch.no_grad():
-                    for i, sample in enumerate(test_loader):
-                        v_f = sample["v_f"].to(device)
-                        v_b = sample["v_b"].to(device)
-                        v_i = sample["v_i"].to(device)
-                        fake_volumes = g_model(v_f, v_b, args.training_step, args.wo_ori_volume)
-                        test_loss += args.volume_loss_weight * mse_loss(v_i, fake_volumes).item()
-
-                test_losses.append(test_loss * args.batch_size / len(test_loader.dataset))
-                print("====> SubEpoch: {} Test set loss {:4f}".format(
-                    subEpoch, test_losses[-1]
-                ))
+            # if (i + 1) % args.test_every == 0:
+            #     g_model.eval()
+            #     if args.gan_loss != "none":
+            #         d_model.eval()
+            #     test_loss = 0.
+            #     with torch.no_grad():
+            #         for i, sample in enumerate(test_loader):
+            #             v_f = sample["v_f"].to(device)
+            #             v_b = sample["v_b"].to(device)
+            #             v_i = sample["v_i"].to(device)
+            #             fake_volumes = g_model(v_f, v_b, args.training_step, args.wo_ori_volume)
+            #             test_loss += args.volume_loss_weight * mse_loss(v_i, fake_volumes).item()
+            #
+            #     test_losses.append(test_loss * args.batch_size / len(test_loader.dataset))
+            #     print("====> SubEpoch: {} Test set loss {:4f}".format(
+            #         subEpoch, test_losses[-1]
+            #     ))
 
             # saving...
-            if (i+1) % args.check_every == 0:
-                print("=> saving checkpoint at epoch {}".format(epoch))
-                if args.gan_loss != "none":
-                    torch.save({"epoch": epoch + 1,
-                                "g_model_state_dict": g_model.state_dict(),
-                                "g_optimizer_state_dict":  g_optimizer.state_dict(),
-                                "d_model_state_dict": d_model.state_dict(),
-                                "d_optimizer_state_dict": d_optimizer.state_dict(),
-                                "d_losses": d_losses,
-                                "g_losses": g_losses,
-                                "train_losses": train_losses,
-                                "test_losses": test_losses},
-                               os.path.join(args.save_dir, "model_" + str(epoch) + "_" + str(subEpoch) + "_" + "pth.tar")
-                               )
-                else:
-                    torch.save({"epoch": epoch + 1,
-                                "g_model_state_dict": g_model.state_dict(),
-                                "g_optimizer_state_dict": g_optimizer.state_dict(),
-                                "train_losses": train_losses,
-                                "test_losses": test_losses},
-                               os.path.join(args.save_dir, "model_" + str(epoch) + "_" + str(subEpoch) + "_" + "pth.tar")
-                               )
-                torch.save(g_model.state_dict(),
-                           os.path.join(args.save_dir, "model_" + str(epoch) + "_" + str(subEpoch) + ".pth"))
+            # if (i+1) % args.check_every == 0:
+            #     print("=> saving checkpoint at epoch {}".format(epoch))
+            #     if args.gan_loss != "none":
+            #         torch.save({"epoch": epoch + 1,
+            #                     "g_model_state_dict": g_model.state_dict(),
+            #                     "g_optimizer_state_dict":  g_optimizer.state_dict(),
+            #                     "d_model_state_dict": d_model.state_dict(),
+            #                     "d_optimizer_state_dict": d_optimizer.state_dict(),
+            #                     "d_losses": d_losses,
+            #                     "g_losses": g_losses,
+            #                     "train_losses": train_losses,
+            #                     "test_losses": test_losses},
+            #                    os.path.join(args.save_dir, "model_" + str(epoch) + "_" + str(subEpoch) + "_" + "pth.tar")
+            #                    )
+            #     else:
+            #         torch.save({"epoch": epoch + 1,
+            #                     "g_model_state_dict": g_model.state_dict(),
+            #                     "g_optimizer_state_dict": g_optimizer.state_dict(),
+            #                     "train_losses": train_losses,
+            #                     "test_losses": test_losses},
+            #                    os.path.join(args.save_dir, "model_" + str(epoch) + "_" + str(subEpoch) + "_" + "pth.tar")
+            #                    )
+            #     torch.save(g_model.state_dict(),
+            #                os.path.join(args.save_dir, "model_" + str(epoch) + "_" + str(subEpoch) + ".pth"))
 
 if __name__  == "__main__":
     main(parse_args())
