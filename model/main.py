@@ -4,6 +4,7 @@ import os
 import argparse
 import math
 import pdb
+import time
 
 import numpy as np
 from tqdm import tqdm
@@ -307,8 +308,8 @@ def main(args):
                         test_loss += args.volume_loss_weight * mse_loss(v_i, fake_volumes).item()
 
                 test_losses.append(test_loss * args.batch_size / len(test_loader.dataset))
-                print("====> SubEpoch: {} Test set loss {:4f}".format(
-                    subEpoch, test_losses[-1]
+                print("====> SubEpoch: {} Test set loss {:4f} Time {}".format(
+                    subEpoch, test_losses[-1], time.asctime( time.localtime(time.time()) )
                 ))
 
             # saving...

@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 
+from basicblock import ConvLayer, UpsampleConvLayer
 from basicblock import ForwardBlockGenerator, BackwardBlockGenerator, ConvLSTMCell
 
 import pdb
@@ -11,10 +12,15 @@ class Generator(nn.Module):
     def __init__(self):
         super(Generator, self).__init__()
 
-        self.for_res1 = ForwardBlockGenerator(in_channels=1, out_channels=16, kernel_size=5, stride=1, downsample_factor=2)
-        self.for_res2 = ForwardBlockGenerator(in_channels=16, out_channels=32, kernel_size=3, stride=1, downsample_factor=2)
-        self.for_res3 = ForwardBlockGenerator(in_channels=32, out_channels=64, kernel_size=3, stride=1, downsample_factor=2)
-        self.for_res4 = ForwardBlockGenerator(in_channels=64, out_channels=64, kernel_size=3, stride=1, downsample_factor=2)
+        #feature learning component
+        self.conv1 = ConvLayer(in_channels=1, out_channels=16, kernel_size=5, stride=2)
+        self.in1 = nn.InstanceNorm3d(16, affine=True)
+        self.conv2 = ConvLayer(in_channels=16, out_channels=32, kernel_size=3, stride=2)
+        self.in2 = nn.InstanceNorm3d(32, affine=True)
+        self.conv3 = ConvLayer(in_channels=32, out_channels=64, kernel_size=3, stride=2)
+        self.in3 = nn.InstanceNorm3d(64, affine=True)
+        self.conv4 = ConvLayer(in_channels=64, out_channels=64, kernel_size=3, stride=2)
+        self.in4 = nn.InstanceNorm3d(64, affine=True)
 
         #temporal component: convolution LSTM
         self.num_layers = 1
@@ -25,10 +31,15 @@ class Generator(nn.Module):
             setattr(self, name, cell)
             self.temporal_subnet.append(cell)
 
-        self.back_res1 = BackwardBlockGenerator(in_channels=64, out_channels=64, kernel_size=3, stride=1, upsample_factor=2)
-        self.back_res2 = BackwardBlockGenerator(in_channels=64, out_channels=32, kernel_size=3, stride=1, upsample_factor=2)
-        self.back_res3 = BackwardBlockGenerator(in_channels=32, out_channels=16, kernel_size=3, stride=1, upsample_factor=2)
-        self.back_res4 = BackwardBlockGenerator(in_channels=16, out_channels=1, kernel_size=5, stride=1, upsample_factor=2)
+        self.deconv1 = UpsampleConvLayer(in_channels=64, out_channels=64, kernel_size=3, stride=1, upsample=2)
+        self.in5 = nn.InstanceNorm3d(64, affine=True)
+        self.deconv2 = UpsampleConvLayer(in_channels=64, out_channels=32, kernel_size=3, stride=1, upsample=2)
+        self.in6 = nn.InstanceNorm3d(32, affine=True)
+        self.deconv3 = UpsampleConvLayer(in_channels=32, out_channels=16, kernel_size=3, stride=1, upsample=2)
+        self.in7 = nn.InstanceNorm3d(16, affine=True)
+        self.deconv4 = UpsampleConvLayer(in_channels=16, out_channels=1, kernel_size=5, stride=1, upsample=2)
+
+        self.relu = torch.nn.ReLU()
         self.tanh = nn.Tanh()
 
     def forward(self, x_f, x_b, total_step, wo_ori_volume):
@@ -38,31 +49,30 @@ class Generator(nn.Module):
         x = x_f
         for step in range(total_step):
             # feature learning component
-            x = self.for_res1(x)
-            x = self.for_res2(x)
-            x = self.for_res3(x)
-            x = self.for_res4(x)
+            x = self.relu(self.in1(self.conv1(x)))
+            x = self.relu(self.in2(self.conv2(x)))
+            x = self.relu(self.in3(self.conv3(x)))
+            x = self.relu(self.in4(self.conv4(x)))
 
             # temporal component
-            # for i in range(self.num_layers):
-            #     # all cells are initialized in the first step
-            #     name = 'cell{}'.format(i)
-            #     if step == 0:
-            #         bsize, _, height, length, width = x.size()
-            #         (h, c) = getattr(self, name).init_hidden(batch_size=bsize, hidden_channels=64,
-            #                                                  shape=(height, length, width))
-            #         internal_state.append((h, c))
-            #     # do forward
-            #     (h, c) = internal_state[i]
-            #     x, new_c = getattr(self, name)(x, h, c)
-            #     internal_state[i] = (x, new_c)
+            for i in range(self.num_layers):
+                # all cells are initialized in the first step
+                name = 'cell{}'.format(i)
+                if step == 0:
+                    bsize, _, height, length, width = x.size()
+                    (h, c) = getattr(self, name).init_hidden(batch_size=bsize, hidden_channels=64,
+                                                             shape=(height, length, width))
+                    internal_state.append((h, c))
+                # do forward
+                (h, c) = internal_state[i]
+                x, new_c = getattr(self, name)(x, h, c)
+                internal_state[i] = (x, new_c)
 
             # upscaling component
-            x = self.back_res1(x)
-            x = self.back_res2(x)
-            x = self.back_res3(x)
-            x = self.back_res4(x)
-            x = self.tanh(x)
+            x = self.relu(self.in5(self.deconv1(x)))
+            x = self.relu(self.in6(self.deconv2(x)))
+            x = self.relu(self.in7(self.deconv3(x)))
+            x = self.tanh(self.deconv4(x))
 
             # save result
             outputs_f.append(x)
@@ -74,10 +84,10 @@ class Generator(nn.Module):
         x = x_b
         for step in range(total_step):
             # feature learning component
-            x = self.for_res1(x)
-            x = self.for_res2(x)
-            x = self.for_res3(x)
-            x = self.for_res4(x)
+            x = self.relu(self.in1(self.conv1(x)))
+            x = self.relu(self.in2(self.conv2(x)))
+            x = self.relu(self.in3(self.conv3(x)))
+            x = self.relu(self.in4(self.conv4(x)))
 
             # temporal component
             for i in range(self.num_layers):
@@ -94,11 +104,10 @@ class Generator(nn.Module):
                 internal_state[i] = (x, new_c)
 
             # upscaling component
-            x = self.back_res1(x)
-            x = self.back_res2(x)
-            x = self.back_res3(x)
-            x = self.back_res4(x)
-            x = self.tanh(x)
+            x = self.relu(self.in5(self.deconv1(x)))
+            x = self.relu(self.in6(self.deconv2(x)))
+            x = self.relu(self.in7(self.deconv3(x)))
+            x = self.tanh(self.deconv4(x))
 
             # save result
             outputs_b.append(x)
