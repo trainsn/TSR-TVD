@@ -31,7 +31,7 @@ class Generator(nn.Module):
         # self.back_res4 = BackwardBlockGenerator(in_channels=16, out_channels=1, kernel_size=5, stride=1, upsample_factor=2)
 
         #feature learning component
-        self.conv1 = ConvLayer(in_channels=1, out_channels=16, kernel_size=5, stride=1)
+        self.conv1 = ConvLayer(in_channels=1, out_channels=16, kernel_size=5, stride=2)
         self.in1 = nn.InstanceNorm3d(16, affine=True)
         self.conv2 = ConvLayer(in_channels=16, out_channels=32, kernel_size=3, stride=2)
         self.in2 = nn.InstanceNorm3d(32, affine=True)
@@ -42,9 +42,9 @@ class Generator(nn.Module):
 
         self.deconv1 = UpsampleConvLayer(in_channels=64, out_channels=64, kernel_size=3, stride=1, upsample=2)
         self.in5 = nn.InstanceNorm3d(64, affine=True)
-        self.decovn2 = UpsampleConvLayer(in_channels=64, out_channels=32, kernel_size=3, stride=1, upsample=2)
+        self.deconv2 = UpsampleConvLayer(in_channels=64, out_channels=32, kernel_size=3, stride=1, upsample=2)
         self.in6 = nn.InstanceNorm3d(32, affine=True)
-        self.decovn3 = UpsampleConvLayer(in_channels=32, out_channels=16, kernel_size=3, stride=1, upsample=2)
+        self.deconv3 = UpsampleConvLayer(in_channels=32, out_channels=16, kernel_size=3, stride=1, upsample=2)
         self.in7 = nn.InstanceNorm3d(16, affine=True)
         self.deconv4 = UpsampleConvLayer(in_channels=16, out_channels=1, kernel_size=5, stride=1, upsample=2)
 
@@ -63,6 +63,7 @@ class Generator(nn.Module):
         y = self.relu(self.in6(self.deconv2(y)))
         y = self.relu(self.in7(self.deconv3(y)))
         y = self.tanh(self.deconv4(y))
+
         return y
 
         # feature learning component
