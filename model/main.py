@@ -60,6 +60,8 @@ def parse_args():
                         help="weight of the feature loss")
     parser.add_argument("--wo-ori-volume", action="store_true", default=False,
                         help="during training, without the original volume")
+    parser.add_argument("--upsample-mode", type=str, default="lr",
+                        help="how to do upsample, voxel shuffle or interpolate")
 
     parser.add_argument("--lr", type=float, default=1e-4,
                         help="learning rate (default: 1e-4)")
@@ -130,9 +132,9 @@ def main(args):
 
     kwargs = {"num_workers": 4, "pin_memory": True} if args.cuda else {}
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size,
-                              shuffle=True, **kwargs)
+                              shuffle=False, **kwargs)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size,
-                             shuffle=True, **kwargs)
+                             shuffle=False, **kwargs)
 
     # model
     def generator_weights_init(m):
@@ -155,7 +157,7 @@ def main(args):
         else:
             return m
 
-    g_model = Generator()
+    g_model = Generator(args.upsample_mode)
     g_model.apply(generator_weights_init)
     if args.data_parallel and torch.cuda.device_count() > 1:
         g_model = nn.DataParallel(g_model)
@@ -210,6 +212,8 @@ def main(args):
             d_model.train()
         train_loss = 0.
         for i, sample in enumerate(train_loader):
+            params = list(g_model.named_parameters())
+            # pdb.set_trace()
             # adversarial ground truths
             real_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1, 1, 1, 1).fill_(1.0), requires_grad=False)
             fake_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1, 1, 1, 1).fill_(0.0), requires_grad=False)
