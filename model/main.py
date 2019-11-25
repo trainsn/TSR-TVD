@@ -154,7 +154,7 @@ def main(args):
         else:
             return m
 
-    g_model = Generator()
+    g_model = Generator("lr")
     g_model.apply(generator_weights_init)
     if args.data_parallel and torch.cuda.device_count() > 1:
         g_model = nn.DataParallel(g_model)

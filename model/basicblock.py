@@ -16,16 +16,49 @@ class ConvLayer(nn.Module):
         return out
 
 class UpsampleConvLayer(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride, upsample=None):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, upsample_mode, upsample=None):
         super(UpsampleConvLayer, self).__init__()
+        self.upsample_mode = upsample_mode
         self.upsample = upsample
         padding = (kernel_size-1) // 2
-        self.conv3d = nn.Conv3d(in_channels, out_channels, kernel_size, stride, padding)
+        if upsample_mode == "lr" and upsample:
+            self.conv3d = nn.Conv3d(in_channels, out_channels * upsample * upsample * upsample, kernel_size, stride,
+                                    padding)
+            self.voxel_shuffle = VoxelShuffle(upsample)
+        else:
+            self.conv3d = nn.Conv3d(in_channels, out_channels, kernel_size, stride, padding)
+
 
     def forward(self, x):
         if self.upsample:
-            x = F.interpolate(x, mode='nearest', scale_factor=self.upsample)
-        out = self.conv3d(x)
+            if self.upsample_mode == "hr":
+                x = F.interpolate(x, mode='nearest', scale_factor=self.upsample)
+                out = self.conv3d(x)
+            elif self.upsample_mode == "lr":
+                x = self.conv3d(x)
+                out = self.voxel_shuffle(x)
+        else:
+            out = self.conv3d(x)
+
+        return out
+
+class VoxelShuffle(nn.Module):
+    def __init__(self, upscale_factor):
+        super(VoxelShuffle, self).__init__()
+        self.upscale_factor = upscale_factor
+
+    def forward(self, input):
+        batch_size, c, h, w, l = input.size()
+        rh, rw, rl = self.upscale_factor, self.upscale_factor, self.upscale_factor
+        oh, ow, ol = h * rh, w * rw, l * rl
+        oc = c // (rh * rw * rl)
+        input_view = input.contiguous().view(
+            batch_size, rh, rw, rl, oc, h, w, l
+        )
+        shuffle_out = input_view.permute(0, 4, 5, 1, 6, 2, 7, 3).contiguous()
+        out = shuffle_out.view(
+            batch_size, oc, oh, ow, ol
+        )
         return out
 
 class ForwardBlockGenerator(nn.Module):
@@ -34,51 +67,52 @@ class ForwardBlockGenerator(nn.Module):
         super(ForwardBlockGenerator, self).__init__()
         self.relu = nn.ReLU()
 
-        self.p1_conv0 = ConvLayer(in_channels, out_channels, kernel_size, stride)
-        self.p1_in0 = nn.InstanceNorm3d(out_channels, affine=True)
-        # self.p1_conv1 = ConvLayer(out_channels, out_channels, kernel_size, stride)
-        # self.p1_conv2 = ConvLayer(out_channels, out_channels, kernel_size, stride)
-        self.p1_conv3 = ConvLayer(out_channels, out_channels, kernel_size, downsample_factor)
-        self.p1_in3 = nn.InstanceNorm3d(out_channels, affine=True)
+        self.p1_conv0 = ConvLayer(in_channels, out_channels, kernel_size, downsample_factor)
+        # self.p1_in0 = nn.InstanceNorm3d(out_channels, affine=True)
+        self.p1_conv1 = ConvLayer(out_channels, out_channels, kernel_size, stride)
+        self.p1_conv2 = ConvLayer(out_channels, out_channels, kernel_size, stride)
+        self.p1_conv3 = ConvLayer(out_channels, out_channels, kernel_size, stride)
+        # self.p1_in3 = nn.InstanceNorm3d(out_channels, affine=True)
 
         self.p2_conv0 = ConvLayer(in_channels, out_channels, kernel_size, downsample_factor)
-        self.p2_in0 = nn.InstanceNorm3d(out_channels, affine=True)
-
+        # self.p2_in0 = nn.InstanceNorm3d(out_channels, affine=True)
 
     def forward(self, x):
-        out = self.relu(self.p1_in0(self.p1_conv0(x)))
-        # out = self.relu(self.p1_conv1(out))
-        # out = self.relu(self.p1_conv2(out))
-        out = self.p1_in3(self.p1_conv3(out))
+        out = self.relu(self.p1_conv0(x))
+        out = self.relu(self.p1_conv1(out))
+        out = self.relu(self.p1_conv2(out))
+        out = self.relu(self.p1_conv3(out))
 
-        residual = self.p2_in0(self.p2_conv0(x))
+        residual = self.relu(self.p2_conv0(x))
 
         out = out + residual
         return out
 
 class BackwardBlockGenerator(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1,
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, upsample_mode="lr",
                  upsample_factor=2):
         super(BackwardBlockGenerator, self).__init__()
         self.relu = nn.ReLU()
 
-        self.p1_conv0 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride, upsample=upsample_factor)
-        self.p1_in0 = nn.InstanceNorm3d(in_channels, affine=True)
-        # self.p1_conv1 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride)
-        # self.p1_conv2 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride)
-        self.p1_conv3 = UpsampleConvLayer(in_channels, out_channels, kernel_size, stride)
-        self.p1_in3 = nn.InstanceNorm3d(out_channels, affine=True)
+        self.p1_conv0 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride, upsample_mode)
+        # self.p1_in0 = nn.InstanceNorm3d(in_channels, affine=True)
+        self.p1_conv1 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride, upsample_mode)
+        self.p1_conv2 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride, upsample_mode)
+        self.p1_conv3 = UpsampleConvLayer(in_channels, out_channels, kernel_size, stride, upsample_mode,
+                                          upsample=upsample_factor)
+        # self.p1_in3 = nn.InstanceNorm3d(out_channels, affine=True)
 
-        self.p2_conv0 = UpsampleConvLayer(in_channels, out_channels, kernel_size, stride, upsample=upsample_factor)
-        self.p2_in0 = nn.InstanceNorm3d(out_channels, affine=True)
+        self.p2_conv0 = UpsampleConvLayer(in_channels, out_channels, kernel_size, stride, upsample_mode,
+                                          upsample=upsample_factor)
+        # self.p2_in0 = nn.InstanceNorm3d(out_channels, affine=True)
 
     def forward(self, x):
-        out = self.relu(self.p1_in0(self.p1_conv0(x)))
-        # out = self.relu(self.p1_conv1(out))
-        # out = self.relu(self.p1_conv2(out))
-        out = self.p1_in3(self.p1_conv3(out))
+        out = self.p1_conv0(self.relu(x))
+        out = self.p1_conv1(self.relu(out))
+        out = self.p1_conv2(self.relu(out))
+        out = self.p1_conv3(self.relu(out))
 
-        residual = self.p2_in0(self.p2_conv0(x))
+        residual = self.p2_conv0(self.relu(x))
 
         out = out + residual
         return out

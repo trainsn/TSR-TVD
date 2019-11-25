@@ -8,7 +8,7 @@ from basicblock import ConvLayer, UpsampleConvLayer, ForwardBlockGenerator, Back
 import pdb
 
 class Generator(nn.Module):
-    def __init__(self):
+    def __init__(self, upsample_mode):
         super(Generator, self).__init__()
 
         # self.for_res1 = ForwardBlockGenerator(in_channels=1, out_channels=16, kernel_size=5, stride=1, downsample_factor=2)
@@ -30,23 +30,24 @@ class Generator(nn.Module):
         # self.back_res3 = BackwardBlockGenerator(in_channels=32, out_channels=16, kernel_size=3, stride=1, upsample_factor=2)
         # self.back_res4 = BackwardBlockGenerator(in_channels=16, out_channels=1, kernel_size=5, stride=1, upsample_factor=2)
 
-        #feature learning component
-        self.conv1 = ConvLayer(in_channels=1, out_channels=16, kernel_size=5, stride=2)
-        self.in1 = nn.InstanceNorm3d(16, affine=True)
-        self.conv2 = ConvLayer(in_channels=16, out_channels=32, kernel_size=3, stride=2)
-        self.in2 = nn.InstanceNorm3d(32, affine=True)
-        self.conv3 = ConvLayer(in_channels=32, out_channels=64, kernel_size=3, stride=2)
-        self.in3 = nn.InstanceNorm3d(64, affine=True)
-        self.conv4 = ConvLayer(in_channels=64, out_channels=64, kernel_size=3, stride=2)
-        self.in4 = nn.InstanceNorm3d(64, affine=True)
+        # feature learning component
+        self.for_res1 = ForwardBlockGenerator(in_channels=1, out_channels=16, kernel_size=5, stride=1,
+                                              downsample_factor=2)
+        self.for_res2 = ForwardBlockGenerator(in_channels=16, out_channels=32, kernel_size=3, stride=1,
+                                              downsample_factor=2)
+        self.for_res3 = ForwardBlockGenerator(in_channels=32, out_channels=64, kernel_size=3, stride=1,
+                                              downsample_factor=2)
+        self.for_res4 = ForwardBlockGenerator(in_channels=64, out_channels=64, kernel_size=3, stride=1,
+                                              downsample_factor=2)
 
-        self.deconv1 = UpsampleConvLayer(in_channels=64, out_channels=64, kernel_size=3, stride=1, upsample=2)
-        self.in5 = nn.InstanceNorm3d(64, affine=True)
-        self.deconv2 = UpsampleConvLayer(in_channels=64, out_channels=32, kernel_size=3, stride=1, upsample=2)
-        self.in6 = nn.InstanceNorm3d(32, affine=True)
-        self.deconv3 = UpsampleConvLayer(in_channels=32, out_channels=16, kernel_size=3, stride=1, upsample=2)
-        self.in7 = nn.InstanceNorm3d(16, affine=True)
-        self.deconv4 = UpsampleConvLayer(in_channels=16, out_channels=1, kernel_size=5, stride=1, upsample=2)
+        self.back_res1 = BackwardBlockGenerator(in_channels=64, out_channels=64, kernel_size=3, stride=1,
+                                                upsample_mode=upsample_mode, upsample_factor=2)
+        self.back_res2 = BackwardBlockGenerator(in_channels=64, out_channels=32, kernel_size=3, stride=1,
+                                                upsample_mode=upsample_mode, upsample_factor=2)
+        self.back_res3 = BackwardBlockGenerator(in_channels=32, out_channels=16, kernel_size=3, stride=1,
+                                                upsample_mode=upsample_mode, upsample_factor=2)
+        self.back_res4 = BackwardBlockGenerator(in_channels=16, out_channels=1, kernel_size=5, stride=1,
+                                                upsample_mode=upsample_mode, upsample_factor=2)
 
         self.relu = torch.nn.ReLU()
         self.tanh = nn.Tanh()
@@ -54,15 +55,16 @@ class Generator(nn.Module):
     def forward(self, x_f):
         x = x_f
 
-        y = self.relu(self.in1(self.conv1(x)))
-        y = self.relu(self.in2(self.conv2(y)))
-        y = self.relu(self.in3(self.conv3(y)))
-        y = self.relu(self.in4(self.conv4(y)))
+        x = self.for_res1(x)
+        x = self.for_res2(x)
+        x = self.for_res3(x)
+        x = self.for_res4(x)
 
-        y = self.relu(self.in5(self.deconv1(y)))
-        y = self.relu(self.in6(self.deconv2(y)))
-        y = self.relu(self.in7(self.deconv3(y)))
-        y = self.tanh(self.deconv4(y))
+        x = self.back_res1(x)
+        x = self.back_res2(x)
+        x = self.back_res3(x)
+        x = self.back_res4(x)
+        y = self.tanh(x)
 
         return y
 
