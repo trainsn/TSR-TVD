@@ -213,7 +213,7 @@ def main(args):
         train_loss = 0.
         for i, sample in enumerate(train_loader):
             params = list(g_model.named_parameters())
-            # pdb.set_trace()
+            pdb.set_trace()
             # adversarial ground truths
             real_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1, 1, 1, 1).fill_(1.0), requires_grad=False)
             fake_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1, 1, 1, 1).fill_(0.0), requires_grad=False)
