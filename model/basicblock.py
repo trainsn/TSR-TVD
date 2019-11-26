@@ -70,22 +70,43 @@ class ForwardBlockGenerator(nn.Module):
         self.relu = nn.ReLU()
 
         self.p1_conv0 = ConvLayer(in_channels, out_channels, kernel_size, downsample_factor)
-        # self.p1_in0 = nn.InstanceNorm3d(out_channels, affine=True)
+        self.p1_in0 = nn.InstanceNorm3d(out_channels, affine=True)
         self.p1_conv1 = ConvLayer(out_channels, out_channels, kernel_size, stride)
+        self.p1_in1 = nn.InstanceNorm3d(out_channels, affine=True)
         self.p1_conv2 = ConvLayer(out_channels, out_channels, kernel_size, stride)
+        self.p1_in2 = nn.InstanceNorm3d(out_channels, affine=True)
         self.p1_conv3 = ConvLayer(out_channels, out_channels, kernel_size, stride)
-        # self.p1_in3 = nn.InstanceNorm3d(out_channels, affine=True)
+        self.p1_in3 = nn.InstanceNorm3d(out_channels, affine=True)
 
         self.p2_conv0 = ConvLayer(in_channels, out_channels, kernel_size, downsample_factor)
-        # self.p2_in0 = nn.InstanceNorm3d(out_channels, affine=True)
+        self.p2_in0 = nn.InstanceNorm3d(out_channels, affine=True)
 
-    def forward(self, x):
-        out = self.relu(self.p1_conv0(x))
-        out = self.relu(self.p1_conv1(out))
-        out = self.relu(self.p1_conv2(out))
-        out = self.relu(self.p1_conv3(out))
+    def forward(self, x, norm):
+        out = self.p1_conv0(x)
+        if norm == "Instance":
+            pdb.set_trace()
+            out = self.p1_in0(out)
+        out = self.relu(out)
 
-        residual = self.relu(self.p2_conv0(x))
+        out = self.p1_conv1(out)
+        if norm == "Instance":
+            out = self.p1_in1(out)
+        out = self.relu(out)
+
+        out = self.p1_conv2(out)
+        if norm == "Instance":
+            out = self.p1_in2(out)
+        out = self.relu(out)
+
+        out = self.p1_conv3(out)
+        if norm == "Instance":
+            out = self.p1_in3(out)
+        out = self.relu(out)
+
+        residual = self.p2_conv0(x)
+        if norm == "Instance":
+            residual = self.p2_in0(residual)
+        residual = self.relu(residual)
 
         out = out + residual
         return out
@@ -96,25 +117,47 @@ class BackwardBlockGenerator(nn.Module):
         super(BackwardBlockGenerator, self).__init__()
         self.relu = nn.ReLU()
 
+        self.p1_in0 = nn.InstanceNorm3d(in_channels, affine=True)
         self.p1_conv0 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride, upsample_mode)
-        # self.p1_in0 = nn.InstanceNorm3d(in_channels, affine=True)
+        self.p1_in1 = nn.InstanceNorm3d(in_channels, affine=True)
         self.p1_conv1 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride, upsample_mode)
+        self.p1_in2 = nn.InstanceNorm3d(in_channels, affine=True)
         self.p1_conv2 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride, upsample_mode)
+        self.p1_in3 = nn.InstanceNorm3d(in_channels, affine=True)
         self.p1_conv3 = UpsampleConvLayer(in_channels, out_channels, kernel_size, stride, upsample_mode,
                                           upsample=upsample_factor)
-        # self.p1_in3 = nn.InstanceNorm3d(out_channels, affine=True)
 
+        self.p2_in0 = nn.InstanceNorm3d(in_channels, affine=True)
         self.p2_conv0 = UpsampleConvLayer(in_channels, out_channels, kernel_size, stride, upsample_mode,
                                           upsample=upsample_factor)
-        # self.p2_in0 = nn.InstanceNorm3d(out_channels, affine=True)
 
-    def forward(self, x):
-        out = self.p1_conv0(self.relu(x))
-        out = self.p1_conv1(self.relu(out))
-        out = self.p1_conv2(self.relu(out))
-        out = self.p1_conv3(self.relu(out))
+    def forward(self, x, norm):
+        out = x
+        if norm == "Instance":
+            out = self.p1_in0(out)
+        out = self.relu(out)
+        out = self.p1_conv0(out)
 
-        residual = self.p2_conv0(self.relu(x))
+        if norm == "Instance":
+            out = self.p1_in1(out)
+        out = self.relu(out)
+        out = self.p1_conv1(out)
+
+        if norm == "Instance":
+            out = self.p1_in2(out)
+        out = self.relu(out)
+        out = self.p1_conv2(out)
+
+        if norm == "Instance":
+            out = self.p1_in3(out)
+        out = self.relu(out)
+        out = self.p1_conv3(out)
+
+        residual = x
+        if norm == "Instance":
+            residual = self.p2_in0(residual)
+        residual = self.relu(residual)
+        residual = self.p2_conv0(residual)
 
         out = out + residual
         return out

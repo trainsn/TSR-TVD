@@ -42,6 +42,7 @@ def parse_args():
                         help="dir of the output models")
     parser.add_argument("--resume", type=str, default="",
                         help="path to the latest checkpoint (default: none)")
+    parser.add_argument("--volume-train-list", type=str, default="volume_train_list.txt")
 
     parser.add_argument("--sn", action="store_true", default=False,
                         help="enable spectral normalization")
@@ -61,7 +62,9 @@ def parse_args():
     parser.add_argument("--wo-ori-volume", action="store_true", default=False,
                         help="during training, without the original volume")
     parser.add_argument("--upsample-mode", type=str, default="lr",
-                        help="how to do upsample, voxel shuffle or interpolate")
+                        help="how to do upsample, voxel shuffle (lr) or interpolate (hr)")
+    parser.add_argument("--norm", type=str, default="",
+                        help="how normalize hidden layer, none or batch norm or instance norm")
 
     parser.add_argument("--lr", type=float, default=1e-4,
                         help="learning rate (default: 1e-4)")
@@ -116,7 +119,7 @@ def main(args):
     train_dataset = TVDataset(
         root=args.root,
         sub_size=args.block_size,
-        volume_list="volume_train_list.txt",
+        volume_list=args.volume_train_list,
         max_k=args.training_step,
         train=True,
         transform=transform
@@ -132,7 +135,7 @@ def main(args):
 
     kwargs = {"num_workers": 4, "pin_memory": True} if args.cuda else {}
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size,
-                              shuffle=False, **kwargs)
+                              shuffle=True, **kwargs)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size,
                              shuffle=False, **kwargs)
 
@@ -222,7 +225,7 @@ def main(args):
             v_b = sample["v_b"].to(device)
             v_i = sample["v_i"].to(device)
             g_optimizer.zero_grad()
-            fake_volumes = g_model(v_f, v_b, args.training_step, args.wo_ori_volume)
+            fake_volumes = g_model(v_f, v_b, args.training_step, args.wo_ori_volume, args.norm)
 
             # adversarial loss
             # update discriminator
@@ -292,7 +295,7 @@ def main(args):
                     d_losses.append(avg_d_loss)
                     g_losses.append(avg_g_loss)
                 train_losses.append(avg_loss)
-                print("====> SubEpoch: {} Average loss: {:.4f}".format(
+                print("====> SubEpoch: {} Average loss: {:.6f}".format(
                     subEpoch, train_loss / args.log_every
                 ))
                 train_loss = 0.
@@ -308,7 +311,7 @@ def main(args):
                         v_f = sample["v_f"].to(device)
                         v_b = sample["v_b"].to(device)
                         v_i = sample["v_i"].to(device)
-                        fake_volumes = g_model(v_f, v_b, args.training_step, args.wo_ori_volume)
+                        fake_volumes = g_model(v_f, v_b, args.training_step, args.wo_ori_volume, args.norm)
                         test_loss += args.volume_loss_weight * mse_loss(v_i, fake_volumes).item()
 
                 test_losses.append(test_loss * args.batch_size / len(test_loader.dataset))

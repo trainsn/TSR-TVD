@@ -43,17 +43,17 @@ class Generator(nn.Module):
         self.relu = torch.nn.ReLU()
         self.tanh = nn.Tanh()
 
-    def forward(self, x_f, x_b, total_step, wo_ori_volume):
+    def forward(self, x_f, x_b, total_step, wo_ori_volume, norm):
         # forward prediction
         internal_state = []
         outputs_f = []
         x = x_f
         for step in range(total_step):
             # feature learning component
-            x = self.for_res1(x)
-            x = self.for_res2(x)
-            x = self.for_res3(x)
-            x = self.for_res4(x)
+            x = self.for_res1(x, norm)
+            x = self.for_res2(x, norm)
+            x = self.for_res3(x, norm)
+            x = self.for_res4(x, norm)
 
             # temporal component
             for i in range(self.num_layers):
@@ -71,10 +71,10 @@ class Generator(nn.Module):
 
             # upscaling component
             # pdb.set_trace()
-            x = self.back_res1(x)
-            x = self.back_res2(x)
-            x = self.back_res3(x)
-            x = self.back_res4(x)
+            x = self.back_res1(x, norm)
+            x = self.back_res2(x, norm)
+            x = self.back_res3(x, norm)
+            x = self.back_res4(x, norm)
             x = self.tanh(x)
 
             # save result
@@ -87,10 +87,10 @@ class Generator(nn.Module):
         x = x_b
         for step in range(total_step):
             # feature learning component
-            x = self.for_res1(x)
-            x = self.for_res2(x)
-            x = self.for_res3(x)
-            x = self.for_res4(x)
+            x = self.for_res1(x, norm)
+            x = self.for_res2(x, norm)
+            x = self.for_res3(x, norm)
+            x = self.for_res4(x, norm)
 
             # temporal component
             for i in range(self.num_layers):
@@ -107,10 +107,10 @@ class Generator(nn.Module):
                 internal_state[i] = (x, new_c)
 
             # upscaling component
-            x = self.back_res1(x)
-            x = self.back_res2(x)
-            x = self.back_res3(x)
-            x = self.back_res4(x)
+            x = self.back_res1(x, norm)
+            x = self.back_res2(x, norm)
+            x = self.back_res3(x, norm)
+            x = self.back_res4(x, norm)
             x = self.tanh(x)
 
             # save result
