@@ -84,7 +84,7 @@ def parse_args():
                         help="number of G upadates per iteration")
     parser.add_argument("--start-epoch", type=int, default=0,
                         help="start epoch number (default: 0)")
-    parser.add_argument("--epochs", type=int, default=10,
+    parser.add_argument("--epochs", type=int, default=100,
                         help="number of epochs to train")
 
     parser.add_argument("--log-every", type=int, default=3,
@@ -216,7 +216,8 @@ def main(args):
         train_loss = 0.
         for i, sample in enumerate(train_loader):
             params = list(g_model.named_parameters())
-            pdb.set_trace()
+            # params[0][1].register_hook(lambda g: print("{}.grad: {}".format(params[0][0], g)))
+            # pdb.set_trace()
             # adversarial ground truths
             real_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1, 1, 1, 1).fill_(1.0), requires_grad=False)
             fake_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1, 1, 1, 1).fill_(0.0), requires_grad=False)
@@ -294,9 +295,10 @@ def main(args):
                     ))
                     d_losses.append(avg_d_loss)
                     g_losses.append(avg_g_loss)
-                train_losses.append(avg_loss)
+                # train_losses.append(avg_loss)
+                train_losses.append(train_loss.item() / args.log_every)
                 print("====> SubEpoch: {} Average loss: {:.6f}".format(
-                    subEpoch, train_loss / args.log_every
+                    subEpoch, train_loss.item() / args.log_every
                 ))
                 train_loss = 0.
 
@@ -316,7 +318,7 @@ def main(args):
 
                 test_losses.append(test_loss * args.batch_size / len(test_loader.dataset))
                 print("====> SubEpoch: {} Test set loss {:4f} Time {}".format(
-                    subEpoch, test_losses[-1], time.asctime( time.localtime(time.time()) )
+                    subEpoch, test_losses[-1], time.asctime(time.localtime(time.time()))
                 ))
 
             # saving...
@@ -344,6 +346,11 @@ def main(args):
                                )
                 torch.save(g_model.state_dict(),
                            os.path.join(args.save_dir, "model_" + str(epoch) + "_" + str(subEpoch) + ".pth"))
+
+        num_subEpoch = len(train_loader) // args.log_every
+        print("====> Epoch: {} Average loss: {:.6f} Time {}".format(
+            epoch, np.array(train_losses[-num_subEpoch:]).mean(), time.asctime(time.localtime(time.time()))
+        ))
 
 if __name__  == "__main__":
     main(parse_args())

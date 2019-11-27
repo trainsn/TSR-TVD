@@ -84,7 +84,6 @@ class ForwardBlockGenerator(nn.Module):
     def forward(self, x, norm):
         out = self.p1_conv0(x)
         if norm == "Instance":
-            pdb.set_trace()
             out = self.p1_in0(out)
         out = self.relu(out)
 
