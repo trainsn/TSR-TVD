@@ -18,6 +18,7 @@ from torch.autograd import Variable
 from torch.utils.data import Dataset, DataLoader
 from torchvision.utils import save_image
 from torchvision import transforms
+from torchsummary import summary
 
 from generator import Generator
 from discriminator import Discriminator
@@ -65,6 +66,10 @@ def parse_args():
                         help="how to do upsample, voxel shuffle (lr) or interpolate (hr)")
     parser.add_argument("--norm", type=str, default="",
                         help="how normalize hidden layer, none or batch norm or instance norm")
+    parser.add_argument("--forward", action="store_true", default=False,
+                        help="during training, do forward prediction")
+    parser.add_argument("--backward", action="store_true", default=False,
+                        help="during training, do backward prediction")
 
     parser.add_argument("--lr", type=float, default=1e-4,
                         help="learning rate (default: 1e-4)")
@@ -160,7 +165,7 @@ def main(args):
         else:
             return m
 
-    g_model = Generator(args.upsample_mode)
+    g_model = Generator(args.upsample_mode, args.forward, args.backward)
     g_model.apply(generator_weights_init)
     if args.data_parallel and torch.cuda.device_count() > 1:
         g_model = nn.DataParallel(g_model)
@@ -217,7 +222,6 @@ def main(args):
         for i, sample in enumerate(train_loader):
             params = list(g_model.named_parameters())
             # params[0][1].register_hook(lambda g: print("{}.grad: {}".format(params[0][0], g)))
-            # pdb.set_trace()
             # adversarial ground truths
             real_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1, 1, 1, 1).fill_(1.0), requires_grad=False)
             fake_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1, 1, 1, 1).fill_(0.0), requires_grad=False)
