@@ -8,17 +8,19 @@ from torch.autograd import Variable
 import pdb
 
 class ConvLayer(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride):
+    def __init__(self, in_channels, out_channels, sn, kernel_size, stride):
         super(ConvLayer, self).__init__()
         padding = (kernel_size-1) // 2
         self.conv3d = nn.Conv3d(in_channels, out_channels, kernel_size, stride, padding)
+        if sn:
+            self.conv3d = nn.utils.spectral_norm(self.conv3d, eps=1e-4)
 
     def forward(self, x):
         out = self.conv3d(x)
         return out
 
 class UpsampleConvLayer(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride, upsample_mode, upsample=None):
+    def __init__(self, in_channels, out_channels, sn, kernel_size, stride, upsample_mode, upsample=None):
         super(UpsampleConvLayer, self).__init__()
         self.upsample_mode = upsample_mode
         self.upsample = upsample
@@ -29,6 +31,9 @@ class UpsampleConvLayer(nn.Module):
             self.voxel_shuffle = VoxelShuffle(upsample)
         else:
             self.conv3d = nn.Conv3d(in_channels, out_channels, kernel_size, stride, padding)
+
+        if sn:
+            self.conv3d = nn.utils.spectral_norm(self.conv3d, eps=1e-4)
 
 
     def forward(self, x):
@@ -64,21 +69,21 @@ class VoxelShuffle(nn.Module):
         return out
 
 class ForwardBlockGenerator(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1,
+    def __init__(self, in_channels, out_channels, gen_sn, kernel_size=3, stride=1,
                  downsample_factor=2):
         super(ForwardBlockGenerator, self).__init__()
         self.relu = nn.ReLU()
 
-        self.p1_conv0 = ConvLayer(in_channels, out_channels, kernel_size, downsample_factor)
+        self.p1_conv0 = ConvLayer(in_channels, out_channels, gen_sn, kernel_size, downsample_factor)
         self.p1_in0 = nn.InstanceNorm3d(out_channels, affine=True)
-        self.p1_conv1 = ConvLayer(out_channels, out_channels, kernel_size, stride)
+        self.p1_conv1 = ConvLayer(out_channels, out_channels, gen_sn, kernel_size, stride)
         self.p1_in1 = nn.InstanceNorm3d(out_channels, affine=True)
-        self.p1_conv2 = ConvLayer(out_channels, out_channels, kernel_size, stride)
+        self.p1_conv2 = ConvLayer(out_channels, out_channels, gen_sn, kernel_size, stride)
         self.p1_in2 = nn.InstanceNorm3d(out_channels, affine=True)
-        self.p1_conv3 = ConvLayer(out_channels, out_channels, kernel_size, stride)
+        self.p1_conv3 = ConvLayer(out_channels, out_channels, gen_sn, kernel_size, stride)
         self.p1_in3 = nn.InstanceNorm3d(out_channels, affine=True)
 
-        self.p2_conv0 = ConvLayer(in_channels, out_channels, kernel_size, downsample_factor)
+        self.p2_conv0 = ConvLayer(in_channels, out_channels, gen_sn, kernel_size, downsample_factor)
         self.p2_in0 = nn.InstanceNorm3d(out_channels, affine=True)
 
     def forward(self, x, norm):
@@ -111,23 +116,23 @@ class ForwardBlockGenerator(nn.Module):
         return out
 
 class BackwardBlockGenerator(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, upsample_mode="lr",
+    def __init__(self, in_channels, out_channels, gen_sn, kernel_size=3, stride=1, upsample_mode="lr",
                  upsample_factor=2):
         super(BackwardBlockGenerator, self).__init__()
         self.relu = nn.ReLU()
 
         self.p1_in0 = nn.InstanceNorm3d(in_channels, affine=True)
-        self.p1_conv0 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride, upsample_mode)
+        self.p1_conv0 = UpsampleConvLayer(in_channels, in_channels, gen_sn, kernel_size, stride, upsample_mode)
         self.p1_in1 = nn.InstanceNorm3d(in_channels, affine=True)
-        self.p1_conv1 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride, upsample_mode)
+        self.p1_conv1 = UpsampleConvLayer(in_channels, in_channels, gen_sn, kernel_size, stride, upsample_mode)
         self.p1_in2 = nn.InstanceNorm3d(in_channels, affine=True)
-        self.p1_conv2 = UpsampleConvLayer(in_channels, in_channels, kernel_size, stride, upsample_mode)
+        self.p1_conv2 = UpsampleConvLayer(in_channels, in_channels, gen_sn, kernel_size, stride, upsample_mode)
         self.p1_in3 = nn.InstanceNorm3d(in_channels, affine=True)
-        self.p1_conv3 = UpsampleConvLayer(in_channels, out_channels, kernel_size, stride, upsample_mode,
+        self.p1_conv3 = UpsampleConvLayer(in_channels, out_channels, gen_sn, kernel_size, stride, upsample_mode,
                                           upsample=upsample_factor)
 
         self.p2_in0 = nn.InstanceNorm3d(in_channels, affine=True)
-        self.p2_conv0 = UpsampleConvLayer(in_channels, out_channels, kernel_size, stride, upsample_mode,
+        self.p2_conv0 = UpsampleConvLayer(in_channels, out_channels, gen_sn, kernel_size, stride, upsample_mode,
                                           upsample=upsample_factor)
 
     def forward(self, x, norm):

@@ -9,7 +9,7 @@ from basicblock import ForwardBlockGenerator, BackwardBlockGenerator, ConvLSTMCe
 import pdb
 
 class Generator(nn.Module):
-    def __init__(self, upsample_mode, fwd, bwd):
+    def __init__(self, upsample_mode, fwd, bwd, gen_sn):
         super(Generator, self).__init__()
         self.fwd = fwd
         self.bwd = bwd
@@ -20,13 +20,13 @@ class Generator(nn.Module):
             self.num_directions.append(1)
 
         #feature learning component
-        self.for_res1 = ForwardBlockGenerator(in_channels=1, out_channels=16, kernel_size=5, stride=1,
+        self.for_res1 = ForwardBlockGenerator(in_channels=1, out_channels=16, gen_sn=gen_sn, kernel_size=5, stride=1,
                                               downsample_factor=2)
-        self.for_res2 = ForwardBlockGenerator(in_channels=16, out_channels=32, kernel_size=3, stride=1,
+        self.for_res2 = ForwardBlockGenerator(in_channels=16, out_channels=32, gen_sn=gen_sn,kernel_size=3, stride=1,
                                               downsample_factor=2)
-        self.for_res3 = ForwardBlockGenerator(in_channels=32, out_channels=64, kernel_size=3, stride=1,
+        self.for_res3 = ForwardBlockGenerator(in_channels=32, out_channels=64, gen_sn=gen_sn,kernel_size=3, stride=1,
                                               downsample_factor=2)
-        self.for_res4 = ForwardBlockGenerator(in_channels=64, out_channels=64, kernel_size=3, stride=1,
+        self.for_res4 = ForwardBlockGenerator(in_channels=64, out_channels=64, gen_sn=gen_sn, kernel_size=3, stride=1,
                                               downsample_factor=2)
 
         #temporal component: convolution LSTM
@@ -39,13 +39,13 @@ class Generator(nn.Module):
                 setattr(self, name, cell)
                 self.temporal_subnet.append(cell)
 
-        self.back_res1 = BackwardBlockGenerator(in_channels=64, out_channels=64, kernel_size=3, stride=1,
+        self.back_res1 = BackwardBlockGenerator(in_channels=64, out_channels=64, gen_sn=gen_sn, kernel_size=3, stride=1,
                                                 upsample_mode=upsample_mode, upsample_factor=2)
-        self.back_res2 = BackwardBlockGenerator(in_channels=64, out_channels=32, kernel_size=3, stride=1,
+        self.back_res2 = BackwardBlockGenerator(in_channels=64, out_channels=32, gen_sn=gen_sn, kernel_size=3, stride=1,
                                                 upsample_mode=upsample_mode, upsample_factor=2)
-        self.back_res3 = BackwardBlockGenerator(in_channels=32, out_channels=16, kernel_size=3, stride=1,
+        self.back_res3 = BackwardBlockGenerator(in_channels=32, out_channels=16, gen_sn=gen_sn, kernel_size=3, stride=1,
                                                 upsample_mode=upsample_mode, upsample_factor=2)
-        self.back_res4 = BackwardBlockGenerator(in_channels=16, out_channels=1, kernel_size=5, stride=1,
+        self.back_res4 = BackwardBlockGenerator(in_channels=16, out_channels=1, gen_sn=gen_sn, kernel_size=5, stride=1,
                                                 upsample_mode=upsample_mode, upsample_factor=2)
 
         self.relu = torch.nn.ReLU()

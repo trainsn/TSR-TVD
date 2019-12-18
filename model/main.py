@@ -45,8 +45,10 @@ def parse_args():
                         help="path to the latest checkpoint (default: none)")
     parser.add_argument("--volume-train-list", type=str, default="volume_train_list.txt")
 
-    parser.add_argument("--sn", action="store_true", default=False,
-                        help="enable spectral normalization")
+    parser.add_argument("--gen-sn", action="store_true", default=False,
+                        help="enable spectral normalization for the generator")
+    parser.add_argument("--dis-sn", action="store_true", default=False,
+                        help="enable spectral normalization for the discriminator")
 
     parser.add_argument("--gan-loss", type=str, default="none",
                         help="gan loss (default: none)")
@@ -157,25 +159,25 @@ def main(args):
             if m.bias is not None:
                 nn.init.zeros_(m.bias)
 
-    def add_sn(m):
-        for name, c in m.named_children():
-            m.add_module(name, add_sn(c))
-        if isinstance(m, nn.Conv2d):
-            return nn.utils.spectral_norm(m, eps=1e-4)
-        else:
-            return m
+    # def add_sn(m):
+    #     for name, c in m.named_children():
+    #         m.add_module(name, add_sn(c))
+    #     if isinstance(m, nn.Conv3d):
+    #         return nn.utils.spectral_norm(m, eps=1e-4)
+    #     else:
+    #         return m
 
-    g_model = Generator(args.upsample_mode, args.forward, args.backward)
+    g_model = Generator(args.upsample_mode, args.forward, args.backward, args.gen_sn)
     g_model.apply(generator_weights_init)
     if args.data_parallel and torch.cuda.device_count() > 1:
         g_model = nn.DataParallel(g_model)
     g_model.to(device)
 
     if args.gan_loss != "none":
-        d_model = Discriminator()
+        d_model = Discriminator(args.dis_sn)
         d_model.apply(discriminator_weights_init)
-        if args.sn:
-            d_model = add_sn(d_model)
+        # if args.dis_sn:
+        #     d_model = add_sn(d_model)
         if args.data_parallel and torch.cuda.device_count() > 1:
             d_model = nn.DataParallel(d_model)
         d_model.to(device)
