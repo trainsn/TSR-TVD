@@ -44,8 +44,8 @@ def parse_args():
     parser.add_argument("--resume", type=str, default="",
                         help="path to the latest checkpoint (default: none)")
 
-    parser.add_argument("--sn", action="store_true", default=False,
-                        help="enable spectral normalization")
+    parser.add_argument("--gen-sn", action="store_true", default=False,
+                        help="enable spectral normalization for the generator")
 
     parser.add_argument("--gan-loss", type=str, default="none",
                         help="gan loss (default: none)")
@@ -53,6 +53,16 @@ def parse_args():
                         help ="enable volume loss")
     parser.add_argument("--feature-loss", action="store_true", default=False,
                         help="enable feature loss")
+    parser.add_argument("--wo-ori-volume", action="store_true", default=False,
+                        help="during training, without the original volume")
+    parser.add_argument("--upsample-mode", type=str, default="lr",
+                        help="how to do upsample, voxel shuffle (lr) or interpolate (hr)")
+    parser.add_argument("--norm", type=str, default="",
+                        help="how normalize hidden layer, none or batch norm or instance norm")
+    parser.add_argument("--forward", action="store_true", default=False,
+                        help="during training, do forward prediction")
+    parser.add_argument("--backward", action="store_true", default=False,
+                        help="during training, do backward prediction")
 
     parser.add_argument("--lr", type=float, default=1e-4,
                         help="learning rate (default: 1e-4)")
@@ -117,21 +127,7 @@ def main(args):
             if m.bias is not None:
                 nn.init.zeros_(m.bias)
 
-    def discriminator_weights_init(m):
-        if isinstance(m, nn.Conv3d):
-            nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='leaky_relu')
-            if m.bias is not None:
-                nn.init.zeros_(m.bias)
-
-    def add_sn(m):
-        for name, c in m.named_children():
-            m.add_module(name, add_sn(c))
-        if isinstance(m, nn.Conv2d):
-            return nn.utils.spectral_norm(m, eps=1e-4)
-        else:
-            return m
-
-    g_model = Generator()
+    g_model = Generator(args.upsample_mode, args.forward, args.backward, args.gen_sn)
     g_model.apply(generator_weights_init)
     if args.data_parallel and torch.cuda.device_count() > 1:
         g_model = nn.DataParallel(g_model)
@@ -173,7 +169,7 @@ def main(args):
         for i, sample in tqdm(enumerate(infer_loader)):
             v_f = sample["v_f"].to(device)
             v_b = sample["v_b"].to(device)
-            fake_volumes = g_model(v_f, v_b, args.infering_step)
+            fake_volumes = g_model(v_f, v_b, args.infering_step, args.wo_ori_volume, args.norm)
             volume_type, time_start, x_start, y_start, z_start = utils.Parse(sample["vf_name"][0])
 
             for j in range(fake_volumes.shape[1]):

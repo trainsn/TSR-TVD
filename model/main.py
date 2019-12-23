@@ -159,14 +159,6 @@ def main(args):
             if m.bias is not None:
                 nn.init.zeros_(m.bias)
 
-    # def add_sn(m):
-    #     for name, c in m.named_children():
-    #         m.add_module(name, add_sn(c))
-    #     if isinstance(m, nn.Conv3d):
-    #         return nn.utils.spectral_norm(m, eps=1e-4)
-    #     else:
-    #         return m
-
     g_model = Generator(args.upsample_mode, args.forward, args.backward, args.gen_sn)
     g_model.apply(generator_weights_init)
     if args.data_parallel and torch.cuda.device_count() > 1:

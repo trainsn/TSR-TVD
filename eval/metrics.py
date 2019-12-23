@@ -40,12 +40,14 @@ def main(args):
             idx = ("%04d" % i)
             gt_filepath = os.path.join(gt_root, "jet_" + idx, "jet_mixfrac_" + idx + ".dat")
             gt = volume_loader(gt_filepath, zSize, ySize, xSize)
-            # pred_filepath = os.path.join(args.root, "save_pred", "jet_mixfrac_" + idx + ".raw")
-            # pred = volume_loader(pred_filepath, zSize, ySize, xSize)
+
             if args.lerp:
                 offset = i - args.test_start
                 interval = args.test_end - args.test_start
                 pred = (1-offset/interval) * gt_start + offset/interval * gt_end
+            else:
+                pred_filepath = os.path.join(args.root, "save_pred", "jet_mixfrac_" + idx + ".raw")
+                pred = volume_loader(pred_filepath, zSize, ySize, xSize)
 
             mse = np.sum(np.power(gt - pred, 2.)) * volume_size_r
             diff = gt.max() - gt.min()
