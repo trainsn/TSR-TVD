@@ -17,10 +17,10 @@ FILE *fp_list;
 
 // load raw data
 char root[256] = "../exavisData/combustion/";
-const int train_end = 45;
+const int train_end = 39;
 const int test_start = 112;
 const int test_end = 112;
-const int timestep = 5;
+const int timestep = 11;
 const int train_dataSize = 400;
 const int test_xTimes = 30;
 const int test_yTimes = 45;
@@ -108,11 +108,11 @@ void CropOneIns(int z_start, int y_start, int x_start, int time_start, int t, fl
 	ostringstream os;
 	if (train) {
 		if (time_start + t < 10)
-			os << root << "train_cropped_new/" << "jet_mixfrac_000" << (time_start + t) << "_x" << x_start << "_y" << y_start << "_z" << z_start << ".raw";
+			os << root << "train_cropped/" << "jet_mixfrac_000" << (time_start + t) << "_x" << x_start << "_y" << y_start << "_z" << z_start << ".raw";
 		else if (time_start + t < 100)
-			os << root << "train_cropped_new/" << "jet_mixfrac_00" << (time_start + t) << "_x" << x_start << "_y" << y_start << "_z" << z_start << ".raw";
+			os << root << "train_cropped/" << "jet_mixfrac_00" << (time_start + t) << "_x" << x_start << "_y" << y_start << "_z" << z_start << ".raw";
 		else
-			os << root << "train_cropped-new/" << "jet_mixfrac_0" << (time_start + t) << "_x" << x_start << "_y" << y_start << "_z" << z_start << ".raw";
+			os << root << "train_cropped/" << "jet_mixfrac_0" << (time_start + t) << "_x" << x_start << "_y" << y_start << "_z" << z_start << ".raw";
 	}
 	else {
 		if (time_start + t < 10)
@@ -194,10 +194,10 @@ int main() {
 	// training data prep
 	ostringstream os;
 	os.str("");
-	os << root << "train_cropped_new/" << "volume_train_list.txt";
+	os << root << "train_cropped/" << "volume_train_list.txt";
 	string volume_list(os.str());
 	os.str("");
-	os << root << "train_cropped_new/" << "volume_train_statis.txt";
+	os << root << "train_cropped/" << "volume_train_statis.txt";
 	string volume_statis(os.str());
 	freopen(volume_statis.c_str(), "w", stdout);
 
@@ -224,15 +224,15 @@ int main() {
 				
 				os.str("");
 				if (time_start + t < 10)
-					os << root << "train_cropped_new/" << "jet_mixfrac_000" << (time_start + t) 
+					os << root << "train_cropped/" << "jet_mixfrac_000" << (time_start + t) 
 					<< "_x" << train_xstart[d][time_start][t] << "_y" << train_ystart[d][time_start][t] 
 					<< "_z" << train_zstart[d][time_start][t] << ".raw";
 				else if (time_start + t < 100)
-					os << root << "train_cropped_new/" << "jet_mixfrac_00" << (time_start + t) 
+					os << root << "train_cropped/" << "jet_mixfrac_00" << (time_start + t) 
 					<< "_x" << train_xstart[d][time_start][t] << "_y" << train_ystart[d][time_start][t]
 					<< "_z" << train_zstart[d][time_start][t] << ".raw"; 
 				else
-					os << root << "train_cropped_new/" << "jet_mixfrac_0" << (time_start + t) 
+					os << root << "train_cropped/" << "jet_mixfrac_0" << (time_start + t) 
 					<< "_x" << train_xstart[d][time_start][t] << "_y" << train_ystart[d][time_start][t]
 					<< "_z" << train_zstart[d][time_start][t] << ".raw";
 				string outFilename(os.str());

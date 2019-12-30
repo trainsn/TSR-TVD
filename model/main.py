@@ -83,7 +83,7 @@ def parse_args():
                         help="beta2 of Adam (default: 0.999)")
     parser.add_argument("--batch-size", type=int, default=1,
                         help="batch size for training")
-    parser.add_argument("--training-step", type=int, default=3,
+    parser.add_argument("--training-step", type=int, default=9,
                         help="in the training phase, the number of intermediate volumes")
     parser.add_argument("--n-d", type=int, default=2,
                         help="number of D updates per iteration")
@@ -265,6 +265,9 @@ def main(args):
                 # volume loss
                 if args.volume_loss:
                     volume_loss = args.volume_loss_weight * mse_loss(v_i, fake_volumes)
+                    volume_loss_part = []
+                    for j in range(v_i.shape[1]):
+                        volume_loss_part.append(mse_loss(v_i[:, j, :], fake_volumes[:, j, :]))
                     loss += volume_loss
 
                 # feature loss
@@ -287,6 +290,12 @@ def main(args):
                     epoch, (i+1) * args.batch_size, len(train_loader.dataset), 100. * (i+1) / len(train_loader),
                     avg_loss
                 ))
+                print("Volume Loss: ")
+                for j in range(len(volume_loss_part)):
+                    print("\tintermediate {}: {}".format(
+                        j+1, volume_loss_part[j]
+                    ))
+
                 if args.gan_loss != "none":
                     print("DLossReal: {:.6f} DLossFake: {:.6f} DLoss: {:.6f}, GLoss: {:.6f}".format(
                         avg_d_loss_real, avg_d_loss_fake, avg_d_loss, avg_g_loss

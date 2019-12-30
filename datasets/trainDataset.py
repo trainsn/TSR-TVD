@@ -22,7 +22,7 @@ class TVDataset(Dataset):
     def __init__(self, root, sub_size, max_k, volume_list="volume_train_list.txt", train=True, transform=None,
                  loader=volume_loader):
         if train:
-            f = open(os.path.join(root, "train_cropped_new", volume_list))
+            f = open(os.path.join(root, "train_cropped", volume_list))
         else:
             f = open(os.path.join(root, "test_cropped_random", volume_list))
         line = f.readline()
@@ -36,7 +36,7 @@ class TVDataset(Dataset):
             if line[-1] == '\n':
                 line = line[:-1]
             if train:
-                self.vs.append(os.path.join("train_cropped_new", line))
+                self.vs.append(os.path.join("train_cropped", line))
             else:
                 self.vs.append(os.path.join("test_cropped_random", line))
             line = f.readline()
