@@ -215,6 +215,7 @@ def main(args):
         train_loss = 0.
         for i, sample in enumerate(train_loader):
             params = list(g_model.named_parameters())
+            # pdb.set_trace()
             # params[0][1].register_hook(lambda g: print("{}.grad: {}".format(params[0][0], g)))
             # adversarial ground truths
             real_label = Variable(Tensor(sample["v_i"].shape[0], sample["v_i"].shape[1], 1, 1, 1, 1).fill_(1.0), requires_grad=False)
@@ -268,6 +269,7 @@ def main(args):
                     volume_loss_part = []
                     for j in range(v_i.shape[1]):
                         volume_loss_part.append(mse_loss(v_i[:, j, :], fake_volumes[:, j, :]))
+                    # volume_loss = volume_loss_part[0] + volume_loss_part[-1]
                     loss += volume_loss
 
                 # feature loss

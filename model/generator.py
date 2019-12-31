@@ -48,7 +48,6 @@ class Generator(nn.Module):
         self.back_res4 = BackwardBlockGenerator(in_channels=16, out_channels=1, gen_sn=gen_sn, kernel_size=5, stride=1,
                                                 upsample_mode=upsample_mode, upsample_factor=2)
 
-        self.relu = torch.nn.ReLU()
         self.tanh = nn.Tanh()
 
     def forward(self, x_f, x_b, total_step, wo_ori_volume, norm):

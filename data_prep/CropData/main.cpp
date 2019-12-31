@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <iostream>
 #include <sstream> 
 #include <string>
 #include <stdlib.h>
@@ -18,14 +19,15 @@ FILE *fp_list;
 // load raw data
 char root[256] = "../exavisData/combustion/";
 const int train_end = 39;
-const int test_start = 112;
+const int test_start = 50;
 const int test_end = 112;
 const int timestep = 11;
 const int train_dataSize = 400;
 const int test_xTimes = 30;
 const int test_yTimes = 45;
 const int test_zTimes = 7;
-const int test_dataSize = test_xTimes * test_yTimes * test_zTimes;
+const int test_dataSize_random = test_xTimes * test_yTimes * test_zTimes;
+const int test_dataSize_random_random = 8;
 
 int train_xstart[train_dataSize][train_end][timestep];
 int train_ystart[train_dataSize][train_end][timestep];
@@ -39,17 +41,17 @@ int train_ymax[train_dataSize][train_end][timestep];
 int train_zmax[train_dataSize][train_end][timestep];
 float train_Vmax[train_dataSize][train_end][timestep];
 
-int test_xstart[test_dataSize][(test_end - test_start) / (timestep - 1) + 1];
-int test_ystart[test_dataSize][(test_end - test_start) / (timestep - 1) + 1];
-int test_zstart[test_dataSize][(test_end - test_start) / (timestep - 1) + 1];
-int test_xmin[test_dataSize][(test_end - test_start) / (timestep - 1) + 1];
-int test_ymin[test_dataSize][(test_end - test_start) / (timestep - 1) + 1];
-int test_zmin[test_dataSize][(test_end - test_start) / (timestep - 1) + 1];
-float test_Vmin[test_dataSize][(test_end - test_start) / (timestep - 1) + 1];
-int test_xmax[test_dataSize][(test_end - test_start) / (timestep - 1) + 1];
-int test_ymax[test_dataSize][(test_end - test_start) / (timestep - 1) + 1];
-int test_zmax[test_dataSize][(test_end - test_start) / (timestep - 1) + 1];
-float test_Vmax[test_dataSize][(test_end - test_start) / (timestep - 1) + 1];
+int test_xstart[test_dataSize_random][(test_end - test_start) / (timestep - 1) + 1];
+int test_ystart[test_dataSize_random][(test_end - test_start) / (timestep - 1) + 1];
+int test_zstart[test_dataSize_random][(test_end - test_start) / (timestep - 1) + 1];
+int test_xmin[test_dataSize_random][(test_end - test_start) / (timestep - 1) + 1];
+int test_ymin[test_dataSize_random][(test_end - test_start) / (timestep - 1) + 1];
+int test_zmin[test_dataSize_random][(test_end - test_start) / (timestep - 1) + 1];
+float test_Vmin[test_dataSize_random][(test_end - test_start) / (timestep - 1) + 1];
+int test_xmax[test_dataSize_random][(test_end - test_start) / (timestep - 1) + 1];
+int test_ymax[test_dataSize_random][(test_end - test_start) / (timestep - 1) + 1];
+int test_zmax[test_dataSize_random][(test_end - test_start) / (timestep - 1) + 1];
+float test_Vmax[test_dataSize_random][(test_end - test_start) / (timestep - 1) + 1];
 
 void CropOneIns(int z_start, int y_start, int x_start, int time_start, int t, float** raw_data, bool train, int d) {
 	float *sub_data;
@@ -135,7 +137,7 @@ void CropOneIns(int z_start, int y_start, int x_start, int time_start, int t, fl
 }
 
 
-void CropData(int time_start, bool train) {
+void CropData(int time_start, bool train, bool random) {
 	float *raw_data[timestep];
 	for (int t = time_start; t < time_start + timestep && t <= test_end; t++) {
 		ostringstream os;
@@ -147,8 +149,9 @@ void CropData(int time_start, bool train) {
 			os << root << "jet_0" << t << "/jet_mixfrac_0" << t << ".dat";
 		string filename(os.str());
 		fp = fopen(filename.c_str(), "rb");
+		
 		if (fp == NULL) {
-			printf("can't open file %s\n", filename);
+			cout << "can't open file " << filename << endl;
 		}
 
 		raw_data[t - time_start] = new float[xiVSize * yiVSize * ziVSize];
@@ -167,122 +170,191 @@ void CropData(int time_start, bool train) {
 				CropOneIns(z_start, y_start, x_start, time_start, t, raw_data, train, d);
 			}
 		}
-	}
+	} 
 	else {
-		for (int zc = 0; zc < test_zTimes; zc++) {
-			int z_start = (int)(float((ziVSize - zSubSize)) / ((test_zTimes - 1) ? (test_zTimes - 1) : 1) * zc);
-			for (int yc = 0; yc < test_yTimes; yc++) {
-				int y_start = (int)(float((yiVSize - ySubSize)) / ((test_yTimes - 1) ? (test_yTimes - 1) : 1) * yc);
-				for (int xc = 0; xc < test_xTimes; xc++) {					
-					int x_start = (int)(float((xiVSize - xSubSize)) / ((test_xTimes - 1) ? (test_xTimes - 1) : 1) * xc);
-					int d = zc * test_yTimes*test_xTimes + yc * test_xTimes + xc;
-					CropOneIns(z_start, y_start, x_start, time_start, 0, raw_data, train, d);
+		if (random) {
+			for (int d = 0; d < test_dataSize_random_random; d++) {
+				int x_start = rand() % (xiVSize - xSubSize + 1);
+				int y_start = rand() % (yiVSize - ySubSize + 1);
+				int z_start = rand() % (ziVSize - zSubSize + 1);
+
+				for (int t = 0; t < timestep; t++) {
+					CropOneIns(z_start, y_start, x_start, time_start, t, raw_data, train, d);
 				}
 			}
 		}
-	}	
-
+		else {
+			for (int zc = 0; zc < test_zTimes; zc++) {
+				int z_start = (int)(float((ziVSize - zSubSize)) / ((test_zTimes - 1) ? (test_zTimes - 1) : 1) * zc);
+				for (int yc = 0; yc < test_yTimes; yc++) {
+					int y_start = (int)(float((yiVSize - ySubSize)) / ((test_yTimes - 1) ? (test_yTimes - 1) : 1) * yc);
+					for (int xc = 0; xc < test_xTimes; xc++) {
+						int x_start = (int)(float((xiVSize - xSubSize)) / ((test_xTimes - 1) ? (test_xTimes - 1) : 1) * xc);
+						int d = zc * test_yTimes*test_xTimes + yc * test_xTimes + xc;
+						CropOneIns(z_start, y_start, x_start, time_start, 0, raw_data, train, d);
+					}
+				}
+			}
+		}
+	}
+	
 	for (int t = 0; t < timestep; t++)
 		delete[]raw_data[t];
 }
 
 
-int main() {
+int main(int argc, char** argv) {
 	srand(time(0));
 
+	string train_mode = argv[1];
+	string random_mode = argv[2];
+	cout << train_mode << " " << random_mode << endl; 
 
-	// training data prep
-	ostringstream os;
-	os.str("");
-	os << root << "train_cropped/" << "volume_train_list.txt";
-	string volume_list(os.str());
-	os.str("");
-	os << root << "train_cropped/" << "volume_train_statis.txt";
-	string volume_statis(os.str());
-	freopen(volume_statis.c_str(), "w", stdout);
+	if (train_mode == "train") {
+		ostringstream os;
+		// training data prep
+		os.str("");
+		os << root << "train_cropped/" << "volume_train_list.txt";
+		string volume_list(os.str());
+		os.str("");
+		os << root << "train_cropped/" << "volume_train_statis.txt";
+		string volume_statis(os.str());
+		freopen(volume_statis.c_str(), "w", stdout);
 
-	fp_list = fopen(volume_list.c_str(), "w");
-	fprintf(fp_list, "%d\n", train_dataSize);
-	fprintf(fp_list, "%d\n", train_end);
+		fp_list = fopen(volume_list.c_str(), "w");
+		fprintf(fp_list, "%d\n", train_dataSize);
+		fprintf(fp_list, "%d\n", train_end);
 
-	for (int time_start = 1; time_start <= train_end; time_start++) {
-		CropData(time_start, true);
+		for (int time_start = 1; time_start <= train_end; time_start++) {
+			CropData(time_start, true, true);
+		}
+
+		// output filenames and statistic information
+		for (int d = 0; d < train_dataSize; d++)
+			for (int time_start = 1; time_start <= train_end; time_start++)
+				for (int t = 0; t < timestep; t++) {
+					printf("%d %d %d %d %d %d %d %d %f\n", d, time_start + t,
+						train_xstart[d][time_start][t], train_ystart[d][time_start][t], train_zstart[d][time_start][t],
+						train_xmin[d][time_start][t], train_ymin[d][time_start][t], train_zmin[d][time_start][t],
+						train_Vmin[d][time_start][t]);
+					printf("%d %d %d %d %d %d %d %d %f\n", d, time_start + t,
+						train_xstart[d][time_start][t], train_ystart[d][time_start][t], train_zstart[d][time_start][t],
+						train_xmax[d][time_start][t], train_ymax[d][time_start][t], train_zmax[d][time_start][t],
+						train_Vmax[d][time_start][t]);
+
+					os.str("");
+					if (time_start + t < 10)
+						os << root << "train_cropped/" << "jet_mixfrac_000" << (time_start + t)
+						<< "_x" << train_xstart[d][time_start][t] << "_y" << train_ystart[d][time_start][t]
+						<< "_z" << train_zstart[d][time_start][t] << ".raw";
+					else if (time_start + t < 100)
+						os << root << "train_cropped/" << "jet_mixfrac_00" << (time_start + t)
+						<< "_x" << train_xstart[d][time_start][t] << "_y" << train_ystart[d][time_start][t]
+						<< "_z" << train_zstart[d][time_start][t] << ".raw";
+					else
+						os << root << "train_cropped/" << "jet_mixfrac_0" << (time_start + t)
+						<< "_x" << train_xstart[d][time_start][t] << "_y" << train_ystart[d][time_start][t]
+						<< "_z" << train_zstart[d][time_start][t] << ".raw";
+					string outFilename(os.str());
+					fprintf(fp_list, "%s\n", outFilename.substr(outFilename.rfind("/") + 1).c_str());
+				}
 	}
-	
-	// output filenames and statistic information
-	for (int d=0; d<train_dataSize;d++)
-		for (int time_start = 1; time_start <= train_end; time_start++)
-			for (int t = 0; t < timestep; t++) {
-				printf("%d %d %d %d %d %d %d %d %f\n", d, time_start + t, 
-					train_xstart[d][time_start][t], train_ystart[d][time_start][t], train_zstart[d][time_start][t], 
-					train_xmin[d][time_start][t], train_ymin[d][time_start][t], train_zmin[d][time_start][t], 
-					train_Vmin[d][time_start][t]);
-				printf("%d %d %d %d %d %d %d %d %f\n", d, time_start + t,
-					train_xstart[d][time_start][t], train_ystart[d][time_start][t], train_zstart[d][time_start][t],
-					train_xmax[d][time_start][t], train_ymax[d][time_start][t], train_zmax[d][time_start][t],
-					train_Vmax[d][time_start][t]);
-				
-				os.str("");
-				if (time_start + t < 10)
-					os << root << "train_cropped/" << "jet_mixfrac_000" << (time_start + t) 
-					<< "_x" << train_xstart[d][time_start][t] << "_y" << train_ystart[d][time_start][t] 
-					<< "_z" << train_zstart[d][time_start][t] << ".raw";
-				else if (time_start + t < 100)
-					os << root << "train_cropped/" << "jet_mixfrac_00" << (time_start + t) 
-					<< "_x" << train_xstart[d][time_start][t] << "_y" << train_ystart[d][time_start][t]
-					<< "_z" << train_zstart[d][time_start][t] << ".raw"; 
-				else
-					os << root << "train_cropped/" << "jet_mixfrac_0" << (time_start + t) 
-					<< "_x" << train_xstart[d][time_start][t] << "_y" << train_ystart[d][time_start][t]
-					<< "_z" << train_zstart[d][time_start][t] << ".raw";
-				string outFilename(os.str());
-				fprintf(fp_list, "%s\n", outFilename.substr(outFilename.rfind("/") + 1).c_str());
+	else if (random_mode == "random") {
+		//testing data prep 
+		ostringstream os;
+		os.str("");
+		os << root << "test_cropped/" << "volume_test_list_" << test_start << "-" << test_end << ".txt";
+		string volume_list(os.str());
+		os.str("");
+		os << root << "test_cropped/" << "volume_test_statis_" << test_start << "-" << test_end << ".txt";
+		string volume_statis(os.str());
+		freopen(volume_statis.c_str(), "w", stdout);
+
+		fp_list = fopen(volume_list.c_str(), "w");
+		fprintf(fp_list, "%d\n", test_dataSize_random_random);
+		fprintf(fp_list, "%d\n", (test_end - test_start) / (timestep - 1));
+
+		for (int time_start = test_start; time_start <= test_end; time_start += timestep - 1) {
+			CropData(time_start, false, true);
+		}
+
+		for (int time_start = test_start; time_start < test_end; time_start += timestep - 1)
+			for (int t = 0; t < timestep; t += timestep - 1)
+				for (int d = 0; d < test_dataSize_random; d++)
+				{
+					printf("%d %d %d %d %d %d %d %d %f\n", d, time_start + t,
+						test_xstart[d][(time_start - test_start) / (timestep - 1)], test_ystart[d][(time_start - test_start) / (timestep - 1)], test_zstart[d][(time_start - test_start) / (timestep - 1)],
+						test_xmin[d][(time_start - test_start) / (timestep - 1)], test_ymin[d][(time_start - test_start) / (timestep - 1)], test_zmin[d][(time_start - test_start) / (timestep - 1)],
+						test_Vmin[d][(time_start - test_start) / (timestep - 1)]);
+					printf("%d %d %d %d %d %d %d %d %f\n", d, time_start + t,
+						test_xstart[d][(time_start - test_start) / (timestep - 1)], test_ystart[d][(time_start - test_start) / (timestep - 1)], test_zstart[d][(time_start - test_start) / (timestep - 1)],
+						test_xmax[d][(time_start - test_start) / (timestep - 1)], test_ymax[d][(time_start - test_start) / (timestep - 1)], test_zmax[d][(time_start - test_start) / (timestep - 1)],
+						test_Vmax[d][(time_start - test_start) / (timestep - 1)]);
+
+					os.str("");
+					if (time_start + t < 10)
+						os << root << "test_cropped/" << "jet_mixfrac_000" << (time_start + t)
+						<< "_x" << test_xstart[d][(time_start - test_start) / (timestep - 1)] << "_y" << test_ystart[d][(time_start - test_start) / (timestep - 1)]
+						<< "_z" << test_zstart[d][(time_start - test_start) / (timestep - 1)] << ".raw";
+					else if (time_start + t < 100)
+						os << root << "test_cropped/" << "jet_mixfrac_00" << (time_start + t)
+						<< "_x" << test_xstart[d][(time_start - test_start) / (timestep - 1)] << "_y" << test_ystart[d][(time_start - test_start) / (timestep - 1)]
+						<< "_z" << test_zstart[d][(time_start - test_start) / (timestep - 1)] << ".raw";
+					else
+						os << root << "test_cropped/" << "jet_mixfrac_0" << (time_start + t)
+						<< "_x" << test_xstart[d][(time_start - test_start) / (timestep - 1)] << "_y" << test_ystart[d][(time_start - test_start) / (timestep - 1)]
+						<< "_z" << test_zstart[d][(time_start - test_start) / (timestep - 1)] << ".raw";
+					string outFilename(os.str());
+					fprintf(fp_list, "%s\n", outFilename.substr(outFilename.rfind("/") + 1).c_str());
+				}
+	}
+	else {
+		 //testing data prep 
+		ostringstream os;
+		os.str("");
+		os << root << "test_cropped/" << "volume_test_list_" << test_start << "-" << test_end << ".txt";
+		string volume_list(os.str());
+		os.str("");
+		os << root << "test_cropped/" << "volume_test_statis_" << test_start << "-" << test_end << ".txt";
+		string volume_statis(os.str());
+		freopen(volume_statis.c_str(), "w", stdout);
+
+		fp_list = fopen(volume_list.c_str(), "w");
+		fprintf(fp_list, "%d\n", test_dataSize_random);
+		//fprintf(fp_list, "%d\n", (test_end - test_start) / (timestep - 1) + 1);
+
+		for (int time_start = test_start; time_start <= test_end; time_start += timestep - 1) {
+			CropData(time_start, false, false);
+		}
+
+		for (int time_start = test_start; time_start < test_end; time_start += timestep - 1)
+			for (int t = 0; t < timestep; t += timestep - 1)
+				for (int d = 0; d < test_dataSize_random; d++)		
+				 {
+					printf("%d %d %d %d %d %d %d %d %f\n", d, time_start + t,
+						test_xstart[d][(time_start - test_start) / (timestep - 1)], test_ystart[d][(time_start - test_start) / (timestep - 1)], test_zstart[d][(time_start - test_start) / (timestep - 1)],
+						test_xmin[d][(time_start - test_start) / (timestep - 1)], test_ymin[d][(time_start - test_start) / (timestep - 1)], test_zmin[d][(time_start - test_start) / (timestep - 1)],
+						test_Vmin[d][(time_start - test_start) / (timestep - 1)]);
+					printf("%d %d %d %d %d %d %d %d %f\n", d, time_start + t,
+						test_xstart[d][(time_start - test_start) / (timestep - 1)], test_ystart[d][(time_start - test_start) / (timestep - 1)], test_zstart[d][(time_start - test_start) / (timestep - 1)],
+						test_xmax[d][(time_start - test_start) / (timestep - 1)], test_ymax[d][(time_start - test_start) / (timestep - 1)], test_zmax[d][(time_start - test_start) / (timestep - 1)],
+						test_Vmax[d][(time_start - test_start) / (timestep - 1)]);
+
+					os.str("");
+					if (time_start + t < 10)
+						os << root << "test_cropped/" << "jet_mixfrac_000" << (time_start + t)
+						<< "_x" << test_xstart[d][(time_start - test_start) / (timestep - 1)] << "_y" << test_ystart[d][(time_start - test_start) / (timestep - 1)]
+						<< "_z" << test_zstart[d][(time_start - test_start) / (timestep - 1)] << ".raw";
+					else if (time_start + t < 100)
+						os << root << "test_cropped/" << "jet_mixfrac_00" << (time_start + t)
+						<< "_x" << test_xstart[d][(time_start - test_start) / (timestep - 1)] << "_y" << test_ystart[d][(time_start - test_start) / (timestep - 1)]
+						<< "_z" << test_zstart[d][(time_start - test_start) / (timestep - 1)] << ".raw";
+					else
+						os << root << "test_cropped/" << "jet_mixfrac_0" << (time_start + t)
+						<< "_x" << test_xstart[d][(time_start - test_start) / (timestep - 1)] << "_y" << test_ystart[d][(time_start - test_start) / (timestep - 1)]
+						<< "_z" << test_zstart[d][(time_start - test_start) / (timestep - 1)] << ".raw";
+					string outFilename(os.str());
+					fprintf(fp_list, "%s\n", outFilename.substr(outFilename.rfind("/") + 1).c_str());
+				}
 			}
-
-	// testing data prep 
-	//os.str("");
-	//os << root << "test_cropped/" << "volume_test_list_" << test_start << "-" << test_end << ".txt";
-	//string volume_list(os.str());
-	//os.str("");
-	//os << root << "test_cropped/" << "volume_test_statis_" << test_start << "-" << test_end << ".txt";
-	//string volume_statis(os.str());
-	//freopen(volume_statis.c_str(), "w", stdout);
-
-	//fp_list = fopen(volume_list.c_str(), "w");
-	//fprintf(fp_list, "%d\n", test_dataSize);
-	////fprintf(fp_list, "%d\n", (test_end - test_start) / (timestep - 1) + 1);
-
-	//for (int time_start = test_start; time_start <= test_end; time_start += timestep - 1) {
-	//	CropData(time_start, false);
-	//}
-	//
-	//for (int time_start = test_start; time_start < test_end; time_start += timestep - 1)
-	//	for (int t = 0; t < timestep; t += timestep - 1)
-	//		for (int d = 0; d < test_dataSize; d++)		
-	//		 {
-	//			printf("%d %d %d %d %d %d %d %d %f\n", d, time_start + t,
-	//				test_xstart[d][(time_start - test_start) / (timestep - 1)], test_ystart[d][(time_start - test_start) / (timestep - 1)], test_zstart[d][(time_start - test_start) / (timestep - 1)],
-	//				test_xmin[d][(time_start - test_start) / (timestep - 1)], test_ymin[d][(time_start - test_start) / (timestep - 1)], test_zmin[d][(time_start - test_start) / (timestep - 1)],
-	//				test_Vmin[d][(time_start - test_start) / (timestep - 1)]);
-	//			printf("%d %d %d %d %d %d %d %d %f\n", d, time_start + t,
-	//				test_xstart[d][(time_start - test_start) / (timestep - 1)], test_ystart[d][(time_start - test_start) / (timestep - 1)], test_zstart[d][(time_start - test_start) / (timestep - 1)],
-	//				test_xmax[d][(time_start - test_start) / (timestep - 1)], test_ymax[d][(time_start - test_start) / (timestep - 1)], test_zmax[d][(time_start - test_start) / (timestep - 1)],
-	//				test_Vmax[d][(time_start - test_start) / (timestep - 1)]);
-
-	//			os.str("");
-	//			if (time_start + t < 10)
-	//				os << root << "test_cropped/" << "jet_mixfrac_000" << (time_start + t)
-	//				<< "_x" << test_xstart[d][(time_start - test_start) / (timestep - 1)] << "_y" << test_ystart[d][(time_start - test_start) / (timestep - 1)]
-	//				<< "_z" << test_zstart[d][(time_start - test_start) / (timestep - 1)] << ".raw";
-	//			else if (time_start + t < 100)
-	//				os << root << "test_cropped/" << "jet_mixfrac_00" << (time_start + t)
-	//				<< "_x" << test_xstart[d][(time_start - test_start) / (timestep - 1)] << "_y" << test_ystart[d][(time_start - test_start) / (timestep - 1)]
-	//				<< "_z" << test_zstart[d][(time_start - test_start) / (timestep - 1)] << ".raw";
-	//			else
-	//				os << root << "test_cropped/" << "jet_mixfrac_0" << (time_start + t)
-	//				<< "_x" << test_xstart[d][(time_start - test_start) / (timestep - 1)] << "_y" << test_ystart[d][(time_start - test_start) / (timestep - 1)]
-	//				<< "_z" << test_zstart[d][(time_start - test_start) / (timestep - 1)] << ".raw";
-	//			string outFilename(os.str());
-	//			fprintf(fp_list, "%s\n", outFilename.substr(outFilename.rfind("/") + 1).c_str());
-	//		}
 }
