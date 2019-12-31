@@ -294,7 +294,7 @@ def main(args):
                 ))
                 print("Volume Loss: ")
                 for j in range(len(volume_loss_part)):
-                    print("\tintermediate {}: {}".format(
+                    print("\tintermediate {}: {:.6f}".format(
                         j+1, volume_loss_part[j]
                     ))
 
