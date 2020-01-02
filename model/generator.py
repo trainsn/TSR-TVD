@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 
 from basicblock import ConvLayer, UpsampleConvLayer
-from basicblock import ForwardBlockGenerator, BackwardBlockGenerator, ConvLSTMCell
+from basicblock import ForwardBlockGenerator, BackwardBlockGenerator, ResidualBlockGenerator, ConvLSTMCell
 
 import pdb
 
@@ -20,14 +20,18 @@ class Generator(nn.Module):
             self.num_directions.append(1)
 
         #feature learning component
-        self.for_res1 = ForwardBlockGenerator(in_channels=1, out_channels=16, gen_sn=gen_sn, kernel_size=5, stride=1,
+        self.for_down1 = ForwardBlockGenerator(in_channels=1, out_channels=16, gen_sn=gen_sn, kernel_size=5, stride=1,
+                                               downsample_factor=2)
+        # self.for_res1 = ResidualBlockGenerator(channels=16, gen_sn=gen_sn)
+        self.for_down2 = ForwardBlockGenerator(in_channels=16, out_channels=32, gen_sn=gen_sn,kernel_size=3, stride=1,
                                               downsample_factor=2)
-        self.for_res2 = ForwardBlockGenerator(in_channels=16, out_channels=32, gen_sn=gen_sn,kernel_size=3, stride=1,
+        # self.for_res2 = ResidualBlockGenerator(channels=32, gen_sn=gen_sn)
+        self.for_down3 = ForwardBlockGenerator(in_channels=32, out_channels=64, gen_sn=gen_sn,kernel_size=3, stride=1,
                                               downsample_factor=2)
-        self.for_res3 = ForwardBlockGenerator(in_channels=32, out_channels=64, gen_sn=gen_sn,kernel_size=3, stride=1,
+        # self.for_res3 = ResidualBlockGenerator(channels=64, gen_sn=gen_sn)
+        self.for_down4 = ForwardBlockGenerator(in_channels=64, out_channels=64, gen_sn=gen_sn, kernel_size=3, stride=1,
                                               downsample_factor=2)
-        self.for_res4 = ForwardBlockGenerator(in_channels=64, out_channels=64, gen_sn=gen_sn, kernel_size=3, stride=1,
-                                              downsample_factor=2)
+        # self.for_res4 = ResidualBlockGenerator(channels=64, gen_sn=gen_sn)
 
         #temporal component: convolution LSTM
         self.num_layers = 1
@@ -39,14 +43,18 @@ class Generator(nn.Module):
                 setattr(self, name, cell)
                 self.temporal_subnet.append(cell)
 
-        self.back_res1 = BackwardBlockGenerator(in_channels=64, out_channels=64, gen_sn=gen_sn, kernel_size=3, stride=1,
+        self.back_up1 = BackwardBlockGenerator(in_channels=64, out_channels=64, gen_sn=gen_sn, kernel_size=3, stride=1,
                                                 upsample_mode=upsample_mode, upsample_factor=2)
-        self.back_res2 = BackwardBlockGenerator(in_channels=64, out_channels=32, gen_sn=gen_sn, kernel_size=3, stride=1,
+        # self.back_res1 = ResidualBlockGenerator(channels=64, gen_sn=gen_sn)
+        self.back_up2 = BackwardBlockGenerator(in_channels=64, out_channels=32, gen_sn=gen_sn, kernel_size=3, stride=1,
                                                 upsample_mode=upsample_mode, upsample_factor=2)
-        self.back_res3 = BackwardBlockGenerator(in_channels=32, out_channels=16, gen_sn=gen_sn, kernel_size=3, stride=1,
+        # self.back_res2 = ResidualBlockGenerator(channels=32, gen_sn=gen_sn)
+        self.back_up3 = BackwardBlockGenerator(in_channels=32, out_channels=16, gen_sn=gen_sn, kernel_size=3, stride=1,
                                                 upsample_mode=upsample_mode, upsample_factor=2)
-        self.back_res4 = BackwardBlockGenerator(in_channels=16, out_channels=1, gen_sn=gen_sn, kernel_size=5, stride=1,
+        # self.back_res3 = ResidualBlockGenerator(channels=16, gen_sn=gen_sn)
+        self.back_up4 = BackwardBlockGenerator(in_channels=16, out_channels=1, gen_sn=gen_sn, kernel_size=5, stride=1,
                                                 upsample_mode=upsample_mode, upsample_factor=2)
+        # self.back_res4 = ResidualBlockGenerator(channels=1, gen_sn=gen_sn)
 
         self.tanh = nn.Tanh()
 
@@ -58,10 +66,14 @@ class Generator(nn.Module):
             x = x_f
             for step in range(total_step):
                 # feature learning component
-                x = self.for_res1(x, norm)
-                x = self.for_res2(x, norm)
-                x = self.for_res3(x, norm)
-                x = self.for_res4(x, norm)
+                x = self.for_down1(x, norm)
+                # x = self.for_res1(x, norm)
+                x = self.for_down2(x, norm)
+                # x = self.for_res2(x, norm)
+                x = self.for_down3(x, norm)
+                # x = self.for_res3(x, norm)
+                x = self.for_down4(x, norm)
+                # x = self.for_res4(x, norm)
 
                 # temporal component
                 for i in range(self.num_layers):
@@ -78,15 +90,18 @@ class Generator(nn.Module):
                     internal_state[i] = (x, new_c)
 
                 # upscaling component
-                x = self.back_res1(x, norm)
-                x = self.back_res2(x, norm)
-                x = self.back_res3(x, norm)
-                x = self.back_res4(x, norm)
+                x = self.back_up1(x, norm)
+                # x = self.back_res1(x, norm)
+                x = self.back_up2(x, norm)
+                # x = self.back_res2(x, norm)
+                x = self.back_up3(x, norm)
+                # x = self.back_res3(x, norm)
+                x = self.back_up4(x, norm)
+                # x = self.back_res4(x, norm)
                 x = self.tanh(x)
 
                 # save result
                 outputs_f.append(x)
-
 
         # backward prediction
         if self.bwd:
@@ -95,10 +110,14 @@ class Generator(nn.Module):
             x = x_b
             for step in range(total_step):
                 # feature learning component
-                x = self.for_res1(x, norm)
-                x = self.for_res2(x, norm)
-                x = self.for_res3(x, norm)
-                x = self.for_res4(x, norm)
+                x = self.for_down1(x, norm)
+                # x = self.for_res1(x, norm)
+                x = self.for_down2(x, norm)
+                # x = self.for_res2(x, norm)
+                x = self.for_down3(x, norm)
+                # x = self.for_res3(x, norm)
+                x = self.for_down4(x, norm)
+                # x = self.for_res4(x, norm)
 
                 # temporal component
                 for i in range(self.num_layers):
@@ -115,10 +134,14 @@ class Generator(nn.Module):
                     internal_state[i] = (x, new_c)
 
                 # upscaling component
-                x = self.back_res1(x, norm)
-                x = self.back_res2(x, norm)
-                x = self.back_res3(x, norm)
-                x = self.back_res4(x, norm)
+                x = self.back_up1(x, norm)
+                # x = self.back_res1(x, norm)
+                x = self.back_up2(x, norm)
+                # x = self.back_res2(x, norm)
+                x = self.back_up3(x, norm)
+                # x = self.back_res3(x, norm)
+                x = self.back_up4(x, norm)
+                # x = self.back_res4(x, norm)
                 x = self.tanh(x)
 
                 # save result

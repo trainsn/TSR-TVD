@@ -44,6 +44,7 @@ def parse_args():
     parser.add_argument("--resume", type=str, default="",
                         help="path to the latest checkpoint (default: none)")
     parser.add_argument("--volume-train-list", type=str, default="volume_train_list.txt")
+    parser.add_argument("--volume-test-list", type=str, default="volume_test_list.txt")
 
     parser.add_argument("--gen-sn", action="store_true", default=False,
                         help="enable spectral normalization for the generator")
@@ -134,7 +135,7 @@ def main(args):
     test_dataset = TVDataset(
         root=args.root,
         sub_size=args.block_size,
-        volume_list="volume_test_list.txt",
+        volume_list=args.volume_test_list,
         max_k=args.training_step,
         train=False,
         transform=transform
@@ -213,6 +214,7 @@ def main(args):
         if args.gan_loss != "none":
             d_model.train()
         train_loss = 0.
+        volume_loss_part = np.zeros(args.training_step)
         for i, sample in enumerate(train_loader):
             params = list(g_model.named_parameters())
             # pdb.set_trace()
@@ -266,10 +268,8 @@ def main(args):
                 # volume loss
                 if args.volume_loss:
                     volume_loss = args.volume_loss_weight * mse_loss(v_i, fake_volumes)
-                    volume_loss_part = []
                     for j in range(v_i.shape[1]):
-                        volume_loss_part.append(mse_loss(v_i[:, j, :], fake_volumes[:, j, :]))
-                    # volume_loss = volume_loss_part[0] + volume_loss_part[-1]
+                        volume_loss_part[j] += mse_loss(v_i[:, j, :], fake_volumes[:, j, :]) / args.n_g / args.log_every
                     loss += volume_loss
 
                 # feature loss
@@ -293,7 +293,7 @@ def main(args):
                     avg_loss
                 ))
                 print("Volume Loss: ")
-                for j in range(len(volume_loss_part)):
+                for j in range(volume_loss_part.shape[0]):
                     print("\tintermediate {}: {:.6f}".format(
                         j+1, volume_loss_part[j]
                     ))
@@ -306,10 +306,11 @@ def main(args):
                     g_losses.append(avg_g_loss)
                 # train_losses.append(avg_loss)
                 train_losses.append(train_loss.item() / args.log_every)
-                print("====> SubEpoch: {} Average loss: {:.6f}".format(
-                    subEpoch, train_loss.item() / args.log_every
+                print("====> SubEpoch: {} Average loss: {:.6f} Time {}".format(
+                    subEpoch, train_loss.item() / args.log_every, time.asctime(time.localtime(time.time()))
                 ))
                 train_loss = 0.
+                volume_loss_part = np.zeros(args.training_step)
 
             # testing...
             if (i + 1) % args.test_every == 0:

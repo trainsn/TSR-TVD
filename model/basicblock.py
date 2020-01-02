@@ -35,7 +35,6 @@ class UpsampleConvLayer(nn.Module):
         if sn:
             self.conv3d = nn.utils.spectral_norm(self.conv3d, eps=1e-4)
 
-
     def forward(self, x):
         if self.upsample:
             if self.upsample_mode == "hr":
@@ -74,47 +73,29 @@ class ForwardBlockGenerator(nn.Module):
         super(ForwardBlockGenerator, self).__init__()
         self.relu = nn.ReLU()
 
-        # self.p1_conv0 = ConvLayer(in_channels, out_channels, gen_sn, kernel_size, downsample_factor)
-        # self.p1_in0 = nn.InstanceNorm3d(out_channels, affine=True)
-        # self.p1_conv1 = ConvLayer(out_channels, out_channels, gen_sn, kernel_size, stride)
-        # self.p1_in1 = nn.InstanceNorm3d(out_channels, affine=True)
-        # self.p1_conv2 = ConvLayer(out_channels, out_channels, gen_sn, kernel_size, stride)
-        # self.p1_in2 = nn.InstanceNorm3d(out_channels, affine=True)
-        # self.p1_conv3 = ConvLayer(out_channels, out_channels, gen_sn, kernel_size, stride)
-        # self.p1_in3 = nn.InstanceNorm3d(out_channels, affine=True)
+        self.p1_conv0 = ConvLayer(in_channels, out_channels, gen_sn, kernel_size, stride)
+        self.p1_in0 = nn.InstanceNorm3d(out_channels, affine=True)
+        self.p1_conv1 = ConvLayer(out_channels, out_channels, gen_sn, kernel_size, downsample_factor)
+        self.p1_in1 = nn.InstanceNorm3d(out_channels, affine=True)
 
-        self.p2_conv0 = ConvLayer(in_channels, out_channels, gen_sn, kernel_size, downsample_factor)
-        self.p2_in0 = nn.InstanceNorm3d(out_channels, affine=True)
+        self.p2_conv0 = ConvLayer(in_channels, out_channels, gen_sn, 1, stride)
 
     def forward(self, x, norm):
-        # out = self.p1_conv0(x)
-        # if norm == "Instance":
-        #     out = self.p1_in0(out)
-        # out = self.relu(out)
-        #
-        # out = self.p1_conv1(out)
-        # if norm == "Instance":
-        #     out = self.p1_in1(out)
-        # out = self.relu(out)
-        #
-        # out = self.p1_conv2(out)
-        # if norm == "Instance":
-        #     out = self.p1_in2(out)
-        # out = self.relu(out)
-        #
-        # out = self.p1_conv3(out)
-        # if norm == "Instance":
-        #     out = self.p1_in3(out)
-        # out = self.relu(out)
-        #
-        residual = self.p2_conv0(x)
+        out = self.p1_conv0(x)
         if norm == "Instance":
-            residual = self.p2_in0(residual)
-        residual = self.relu(residual)
-        return residual
+            out = self.p1_in0(out)
+        out = self.relu(out)
 
-        # out = out + residual
-        # return out
+        out = self.p1_conv1(out)
+        if norm == "Instance":
+            out = self.p1_in1(out)
+
+        residual = self.p2_conv0(x)
+        residual = F.avg_pool3d(residual, kernel_size=2)
+
+        out = out + residual
+        return out
+
 
 class BackwardBlockGenerator(nn.Module):
     def __init__(self, in_channels, out_channels, gen_sn, kernel_size=3, stride=1, upsample_mode="lr",
@@ -122,51 +103,56 @@ class BackwardBlockGenerator(nn.Module):
         super(BackwardBlockGenerator, self).__init__()
         self.relu = nn.ReLU()
 
-        # self.p1_in0 = nn.InstanceNorm3d(in_channels, affine=True)
-        # self.p1_conv0 = UpsampleConvLayer(in_channels, in_channels, gen_sn, kernel_size, stride, upsample_mode)
-        # self.p1_in1 = nn.InstanceNorm3d(in_channels, affine=True)
-        # self.p1_conv1 = UpsampleConvLayer(in_channels, in_channels, gen_sn, kernel_size, stride, upsample_mode)
-        # self.p1_in2 = nn.InstanceNorm3d(in_channels, affine=True)
-        # self.p1_conv2 = UpsampleConvLayer(in_channels, in_channels, gen_sn, kernel_size, stride, upsample_mode)
-        # self.p1_in3 = nn.InstanceNorm3d(in_channels, affine=True)
-        # self.p1_conv3 = UpsampleConvLayer(in_channels, out_channels, gen_sn, kernel_size, stride, upsample_mode,
-        #                                   upsample=upsample_factor)
+        self.p1_conv0 = UpsampleConvLayer(in_channels, in_channels, gen_sn, kernel_size, stride, upsample_mode,
+                                                                            upsample=upsample_factor)
+        self.p1_in0 = nn.InstanceNorm3d(in_channels, affine=True)
 
-        self.p2_in0 = nn.InstanceNorm3d(in_channels, affine=True)
-        self.p2_conv0 = UpsampleConvLayer(in_channels, out_channels, gen_sn, kernel_size, stride, upsample_mode,
+        self.p1_conv1 = UpsampleConvLayer(in_channels, out_channels, gen_sn, kernel_size, stride, upsample_mode)
+        self.p1_in1 = nn.InstanceNorm3d(out_channels, affine=True)
+
+        self.p2_conv0 = UpsampleConvLayer(in_channels, out_channels, gen_sn, 1, 1, upsample_mode,
                                           upsample=upsample_factor)
 
     def forward(self, x, norm):
-        # out = x
-        # if norm == "Instance":
-        #     out = self.p1_in0(out)
-        # out = self.relu(out)
-        # out = self.p1_conv0(out)
-        #
-        # if norm == "Instance":
-        #     out = self.p1_in1(out)
-        # out = self.relu(out)
-        # out = self.p1_conv1(out)
-        #
-        # if norm == "Instance":
-        #     out = self.p1_in2(out)
-        # out = self.relu(out)
-        # out = self.p1_conv2(out)
-        #
-        # if norm == "Instance":
-        #     out = self.p1_in3(out)
-        # out = self.relu(out)
-        # out = self.p1_conv3(out)
+        out = x
+        out = self.p1_conv0(out)
+        if norm == "Instance":
+            out = self.p1_in0(out)
+        out = self.relu(out)
+
+        out = self.p1_conv1(out)
+        if norm == "Instance":
+            out = self.p1_in1(out)
 
         residual = x
-        if norm == "Instance":
-            residual = self.p2_in0(residual)
-        residual = self.relu(residual)
         residual = self.p2_conv0(residual)
-        return residual
 
-        # out = out + residual
-        # return out
+        out = out + residual
+        return out
+
+class ResidualBlockGenerator(nn.Module):
+    def __init__(self, channels, gen_sn, kernel_size=3, stride=1):
+        super(ResidualBlockGenerator, self).__init__()
+        self.relu = nn.ReLU()
+
+        self.conv0 = ConvLayer(channels, channels, gen_sn, kernel_size, stride)
+        self.in0 = nn.InstanceNorm3d(channels, affine=True)
+        self.conv1 = ConvLayer(channels, channels, gen_sn, kernel_size, stride)
+        self.in1 = nn.InstanceNorm3d(channels, affine=True)
+
+    def forward(self, x, norm):
+        out = self.conv0(x)
+        if norm == "Instance":
+            out = self.in0(out)
+        out = self.relu(out)
+
+        out = self.conv1(out)
+        if norm == "Instance":
+            out = self.in1(out)
+
+        residual = x
+        out = out + residual
+        return out
 
 class ConvLSTMCell(nn.Module):
     def __init__(self, input_channels, hidden_channels, kernel_size, stride):

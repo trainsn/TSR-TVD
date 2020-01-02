@@ -26,8 +26,12 @@ class TVDataset(Dataset):
         else:
             f = open(os.path.join(root, "test_cropped_random", volume_list))
         line = f.readline()
+        if line[-1] == '\n':
+            line = line[:-1]
         self.dataSize = int(line)
         line = f.readline()
+        if line[-1] == '\n':
+            line = line[:-1]
         self.timeRange = int(line)
 
         self.vs = []
