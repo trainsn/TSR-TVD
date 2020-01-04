@@ -50,6 +50,8 @@ def parse_args():
                         help="enable spectral normalization for the generator")
     parser.add_argument("--dis-sn", action="store_true", default=False,
                         help="enable spectral normalization for the discriminator")
+    parser.add_argument("--residual", action="store_true", default=False,
+                        help="decide whether adding residual block in the generator or not")
 
     parser.add_argument("--gan-loss", type=str, default="none",
                         help="gan loss (default: none)")
@@ -160,7 +162,7 @@ def main(args):
             if m.bias is not None:
                 nn.init.zeros_(m.bias)
 
-    g_model = Generator(args.upsample_mode, args.forward, args.backward, args.gen_sn)
+    g_model = Generator(args.upsample_mode, args.forward, args.backward, args.gen_sn, args.residual)
     g_model.apply(generator_weights_init)
     if args.data_parallel and torch.cuda.device_count() > 1:
         g_model = nn.DataParallel(g_model)
